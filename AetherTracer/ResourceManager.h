@@ -17,26 +17,68 @@
 class ResourceManager {
 public:
 
-	struct Buffer {
-		ID3D12Resource* uploadBuffers;
-		ID3D12Resource* defaultBuffers;
+	struct ResourceHandle {
+		// for resource that don't need an upload buffer, only the default_buffer is used
+		ID3D12Resource* upload_buffer;
+		ID3D12Resource* default_buffer;
+
+		// offset in the global heap
+		UINT heap_index_srv; // or cbv
+		UINT heap_index_uav;
 	};
 
 
-	ResourceManager() {};
+	struct DescriptorAllocator {
+		ID3D12DescriptorHeap* desc_heap;
+		std::vector<UINT> free_indices;
+		UINT desc_increment_size;
+
+		UINT alloc() {
+			UINT idx = free_indices.back();
+			free_indices.pop_back();
+			return idx;
+		}
+
+		void free(UINT idx) {
+			free_indices.push_back(idx);
+		}
+	};
+
+	ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager);
 	~ResourceManager() {};
 
-	void initClearDescriptors();
+	
+	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void pushResourceHandle(ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
+	void createCBV(ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
+	ResourceHandle* makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size = nullptr);
 
-	Buffer* createBuffers(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV);
+	// INIT Resource
+	void initAccumulationTexture(ResourceHandle* resource_handle, std::string resource_name);
+	void initRenderTarget(ResourceHandle* resource_handle, std::string resource_name);
 
+	void initModelBuffers();
+	void initModelBLAS();
+	void initScene();
+	void initMaterialBuffer();
+	void initTopLevelAS();
+	void initVertexIndexBuffers();
+	void initMaxLumBuffer();
 
+	void updateToneParams();
+	void updateCamera();
+	void updateTransforms();
+	void updateRand();
 
+	void initDescriptorHeap(ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
+
+	void initGlobalDescriptors();
+	void initUAVClearDescriptors();
 
 	// Utility
-
-	
+	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
+	void flush();
 
 	// RAY TRACING STAGE
 
@@ -64,10 +106,10 @@ public:
 		DX12Model() : loadedModel(nullptr), BLAS(nullptr) {};
 
 		MeshManager::LoadedModel* loadedModel; // mesh and raw vertex data
-		ID3D12Resource* BLAS;
+		ResourceHandle* BLAS;
 
-		std::vector<Buffer*> vertexBuffers;
-		std::vector<Buffer*> indexBuffers;;
+		std::vector<ResourceHandle*> vertexBuffers;
+		std::vector<ResourceHandle*> indexBuffers;;
 	};
 
 	struct DX12Entity {
@@ -96,15 +138,15 @@ public:
 	};
 
 	// MODEL
-	std::vector<Buffer*> allVertexBuffers;
-	std::vector<Buffer*> allIndexBuffers;
+	std::vector<ResourceHandle*> allVertexBuffers;
+	std::vector<ResourceHandle*> allIndexBuffers;
 
-	Buffer* materialsBuffer;
+	ResourceHandle* materialsBuffer;
 	std::vector<DX12Material> dx12Materials;
-	Buffer* materialIndexBuffer;
+	ResourceHandle* materialIndexBuffer;
 	std::vector<uint32_t> materialIndices;
 
-	Buffer* cameraConstantBuffer;
+	ResourceHandle* cameraConstantBuffer;
 
 	// ENTITY / BLAS
 	std::unordered_map<std::string, DX12Material*> materials;
@@ -114,18 +156,18 @@ public:
 	DX12Camera* dx12Camera;
 
 	// TLAS
-	ID3D12Resource* tlas;
-	ID3D12Resource* tlasscratch;
+	ResourceHandle* tlas;
+	ResourceHandle* tlas_scratch;
 
 	UINT NUM_INSTANCES = 0;
-	ID3D12Resource* instances;
+	ResourceHandle* instances;
 	D3D12_RAYTRACING_INSTANCE_DESC* instanceData;
 	std::unordered_map<std::string, uint32_t> uniqueInstancesID;
 	std::unordered_set<std::string> uniqueInstances;
 
 	// COMPUTE STAGE
 
-	ID3D12Resource* renderTarget;
+	ResourceHandle* renderTarget;
 
 	struct alignas(256)ToneMappingParams {
 		ToneMappingParams() : stage(0), numIts(1), exposure(1.0f) {};
@@ -134,14 +176,14 @@ public:
 		UINT numIts;
 	};
 	ToneMappingParams* toneMappingParams;
-	Buffer* toneMappingConstantBuffer;
-	Buffer* maxLumBuffer;
+	ResourceHandle* toneMappingConstantBuffer;
+	ResourceHandle* maxLumBuffer;
 
 	// SHARED
 
-	ID3D12Resource* accumulationTexture;
+	ResourceHandle* accumulationTexture;
 
-	Buffer* randBuffer;
+	ResourceHandle* randBuffer;
 	std::vector<uint64_t> randPattern;
 
 
@@ -156,7 +198,7 @@ public:
 
 	DXGI_SAMPLE_DESC NO_AA = { .Count = 1, .Quality = 0 };
 
-
+	
 	// device init
 	HWND hwnd;
 	IDXGIFactory4* factory;
@@ -173,6 +215,23 @@ public:
 	ID3D12CommandAllocator* cmdAlloc; // block of memory
 	ID3D12GraphicsCommandList4* cmdList;
 
+	ID3D12RootSignature* rootSignature;
+
+	ID3D12StateObject* raytracingPSO;
+	ID3D12StateObject* computePSO;
+
+	// ray tracing shader tables
+	UINT64 NUM_SHADER_IDS = 3;
+	ID3D12Resource* shaderIDs;
+
+	// Heap Management
+	DescriptorAllocator* global_descriptor_heap_allocator;
+	DescriptorAllocator* UAVClear_descriptor_heap_allocator;
+
+
+	D3D12_HEAP_PROPERTIES UPLOAD_HEAP = { .Type = D3D12_HEAP_TYPE_UPLOAD };
+	D3D12_HEAP_PROPERTIES DEFAULT_HEAP = { .Type = D3D12_HEAP_TYPE_DEFAULT };
+
 	// imgui
 	ID3D12DescriptorHeap* rtvHeap = nullptr;
 	UINT rtvDescriptorSize = 0;
@@ -184,5 +243,11 @@ public:
 	// cpu non shader visible descriptor heap
 	ID3D12DescriptorHeap* cpuDescHeap;
 
+	// shaders
+	ID3DBlob* rsBlob;
+	ID3DBlob* csBlob;
 
+	MeshManager* meshManager;
+	MaterialManager* materialManager;
+	EntityManager* entityManager;
 };

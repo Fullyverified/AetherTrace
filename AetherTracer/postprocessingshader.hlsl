@@ -1,14 +1,14 @@
-cbuffer Params : register(b0)
+cbuffer Params : register(b1)
 {
     uint stage;
     float exposure;
     uint numIterations;
 }
 
-Texture2D<float4> accumulationTexture : register(t0);
-RWTexture2D<float4> Output : register(u0);
+Texture2D<float4> accumulationTexture : register(t0, space0);
+RWTexture2D<float4> renderTarget : register(u2, space0);
 
-RWBuffer<uint> maxLumBuffer : register(u1);
+RWBuffer<uint> maxLumBuffer : register(u3, space0);
 
 groupshared float g_maxLum[256];
 
@@ -79,7 +79,7 @@ void toneMap(uint3 dispatchID : SV_DispatchThreadID, uint3 groupThreadID : SV_Gr
        
     }
 
-    Output[dispatchID.xy] = float4(accum, 1.0f);
+    renderTarget[dispatchID.xy] = float4(accum, 1.0f);
 }
 
 [numthreads(16, 16, 1)]

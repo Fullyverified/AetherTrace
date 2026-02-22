@@ -32,13 +32,13 @@ struct Material
 RWTexture2D<float4> accumulationTexture : register(u0, space0);
 RWBuffer<uint64_t> randPattern : register(u1, space0);
 
-RaytracingAccelerationStructure scene : register(t0, space0);
+RaytracingAccelerationStructure scene : register(t1, space1);
 
-StructuredBuffer<Vertex> VertexBuffers[] : register(t1, space1);
-Buffer<uint> IndexBuffers[] : register(t2, space2);
+StructuredBuffer<Vertex> VertexBuffers[] : register(t2, space2);
+Buffer<uint> IndexBuffers[] : register(t3, space3);
 
-StructuredBuffer<Material> Materials : register(t3, space3);
-Buffer<uint> materialIndexBuffer : register(t3, space4);
+StructuredBuffer<Material> Materials : register(t4, space4);
+Buffer<uint> materialIndexBuffer : register(t5, space5);
 
 cbuffer Camerab : register(b0)
 {
@@ -409,7 +409,7 @@ float3 refractionDirection(inout Payload payload, Material mat, float3 worldNorm
     float cosTheta2 = sqrt(max(0.0f, 1.0f - sinTheta2 * sinTheta2));
     float3 refraction = (wi * (n1 / n2)) + (worldNormal * ((n1 / n2) * cosTheta_I - cosTheta2));
     
-    normalize(refraction);
+    refraction = normalize(refraction);
     payload.internal = payload.internal ? false : true;
     
     return refraction;

@@ -66,7 +66,7 @@ void AetherTracer::renderImgui() {
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
-
+	
 	if (UI::renderUI) {
 		UI::renderSettings();
 	}

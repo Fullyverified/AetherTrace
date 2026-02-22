@@ -18,8 +18,7 @@
 #include "MaterialManager.h"
 #include "EntityManager.h"
 #include "Vector.h"
-#include "ComputeStage.h"
-#include "RayTracingStage.h"
+
 #include "ResourceManager.h"
 #include "Window.h"
 
@@ -39,6 +38,7 @@ struct ImGuiDescriptorAllocator {
 
 
 	void init(ID3D12Device* device, int capacity) {
+		
 
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -75,7 +75,6 @@ struct ImGuiDescriptorAllocator {
 
 	void free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
 
-
 		size_t offset = cpu.ptr - heap->GetCPUDescriptorHandleForHeapStart().ptr;
 		int idx = (int)(offset / descriptorSize);
 		freeIndices.push_back(idx);
@@ -109,9 +108,17 @@ public:
 	void initSurfaces();
 	void resize();
 	void initCommand();
-
-	void accumulationReset();
 	
+	void loadShaders();
+	void initRootSignature();
+	void initRayTracingPipeline();
+	void initComputePipeline();
+	void initGPUHandle();
+	void initRTShaderTables();
+
+	void traceRays();
+	void postProcess();
+
 	void render();
 	void present();
 
@@ -123,7 +130,6 @@ public:
 
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
 
-	UploadDefaultBufferPair createBuffers(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState);
 	void barrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 
 	bool reset = false;
@@ -134,7 +140,4 @@ public:
 	EntityManager* entityManager;
 	ResourceManager* rm;
 	Window* window;
-
-	ComputeStage* computeStage;
-	RayTracingStage* raytracingStage;
 };

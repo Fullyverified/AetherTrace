@@ -132,14 +132,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AetherTracer.cpp" />
-    <ClCompile Include="ComputeStage.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="DX12Renderer.cpp" />
     <ClCompile Include="EntityManager.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshManager.cpp" />
-    <ClCompile Include="RayTracingStage.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="UI.cpp" />
     <ClCompile Include="Window.cpp" />
@@ -149,14 +147,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AetherTracer.h" />
-    <ClInclude Include="ComputeStage.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="DX12Renderer.h" />
     <ClInclude Include="EntityManager.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="MaterialManager.h" />
     <ClInclude Include="MeshManager.h" />
-    <ClInclude Include="RayTracingStage.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="Vector.h" />

@@ -35,6 +35,8 @@ struct Config {
 
     int minBouncesMax = 100;
     int maxBouncesMax = 100;
+
+    bool debug = true;
 };
 
 extern Config config;
