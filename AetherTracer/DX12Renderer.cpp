@@ -28,7 +28,7 @@ void ImGuiDX12FreeSRV(ImGui_ImplDX12_InitInfo* init_info_unused, D3D12_CPU_DESCR
 
 DX12Renderer::DX12Renderer(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window) : entityManager(entityManager), meshManager(meshManager), materialManager(materialManager), window(window) {
 
-	rm = new ResourceManager(meshManager, materialManager, entityManager);
+	rm = new DX12ResourceManager(meshManager, materialManager, entityManager);
 
 }
 
@@ -44,7 +44,7 @@ void DX12Renderer::init() {
 
 	initImgui();
 
-	rm->dx12Camera = new ResourceManager::DX12Camera{};
+	rm->dx12Camera = new DX12ResourceManager::DX12Camera{};
 
 	resize();
 
@@ -56,12 +56,6 @@ void DX12Renderer::init() {
 	rm->updateCamera();
 	rm->initAccumulationTexture(rm->accumulationTexture, "Accumulation Texture");
 	rm->initModelBuffers();
-
-	rm->cmdList->Close();
-	rm->cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&rm->cmdList));
-	rm->waitForGPU();
-	rm->cmdAlloc->Reset();
-	rm->cmdList->Reset(rm->cmdAlloc, nullptr);
 
 	rm->initModelBLAS();
 
@@ -75,7 +69,6 @@ void DX12Renderer::init() {
 	rm->updateRand();
 	rm->updateToneParams();
 	rm->initMaxLumBuffer();
-
 
 	std::cout << "init Global Descriptor Heap" << std::endl;
 	rm->initGlobalDescriptors();

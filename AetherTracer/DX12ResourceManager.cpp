@@ -1,19 +1,19 @@
-#include "ResourceManager.h"
+#include "DX12ResourceManager.h"
 #include <random>
 
 #include <d3dcompiler.h>
 
-ResourceManager::ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager)
+DX12ResourceManager::DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager)
 	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager) {
 
-	global_descriptor_heap_allocator = new ResourceManager::DescriptorAllocator{};
-	//UAVClear_descriptor_heap_allocator = new ResourceManager::DescriptorAllocator{};
+	global_descriptor_heap_allocator = new DX12ResourceManager::DescriptorAllocator{};
+	//UAVClear_descriptor_heap_allocator = new DX12ResourceManager::DescriptorAllocator{};
 
-	renderTarget = new ResourceManager::ResourceHandle;
-	accumulationTexture = new ResourceManager::ResourceHandle;
+	renderTarget = new DX12ResourceManager::ResourceHandle;
+	accumulationTexture = new DX12ResourceManager::ResourceHandle;
 };
 
-void ResourceManager::initDescriptorHeap(ResourceManager::DescriptorAllocator* descriptor_allocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name) {
+void DX12ResourceManager::initDescriptorHeap(DX12ResourceManager::DescriptorAllocator* descriptor_allocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name) {
 
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags = is_shader_visible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
@@ -45,7 +45,7 @@ void ResourceManager::initDescriptorHeap(ResourceManager::DescriptorAllocator* d
 	//global_desctiptor_heap_allocator->desc_heap->SetName(descriptor_name);
 }
 
-void ResourceManager::initGlobalDescriptors() {
+void DX12ResourceManager::initGlobalDescriptors() {
 
 	if (config.debug) std::cout << "creating SRVs" << std::endl;
 
@@ -95,7 +95,7 @@ void ResourceManager::initGlobalDescriptors() {
 	std::cout << "tlas->heap_index_srv: " << tlas->heap_index_srv << std::endl;
 
 	// Vertex Buffer
-	for (ResourceManager::ResourceHandle* vertexBuffer : allVertexBuffers) {
+	for (DX12ResourceManager::ResourceHandle* vertexBuffer : allVertexBuffers) {
 		srvDesc = {};
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -111,7 +111,7 @@ void ResourceManager::initGlobalDescriptors() {
 		std::cout << "srvNumElementsVertex: " << srvDesc.Buffer.NumElements << std::endl;
 	}
 	// Vertex Index Buffer
-	for (ResourceManager::ResourceHandle* indexBuffer : allIndexBuffers) {
+	for (DX12ResourceManager::ResourceHandle* indexBuffer : allIndexBuffers) {
 		srvDesc = {};
 		srvDesc.Format = DXGI_FORMAT_R32_UINT;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -133,7 +133,7 @@ void ResourceManager::initGlobalDescriptors() {
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Buffer.FirstElement = 0;
 	srvDesc.Buffer.NumElements = static_cast<UINT>(dx12Materials.size());
-	srvDesc.Buffer.StructureByteStride = sizeof(ResourceManager::DX12Material);
+	srvDesc.Buffer.StructureByteStride = sizeof(DX12ResourceManager::DX12Material);
 	d3dDevice->CreateShaderResourceView(materialsBuffer->default_buffer, &srvDesc, cpuHandle);
 
 	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
@@ -155,7 +155,7 @@ void ResourceManager::initGlobalDescriptors() {
 	// Camera CBV
 	cbvDesc = {};
 	cbvDesc.BufferLocation = cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = sizeof(ResourceManager::DX12Camera);
+	cbvDesc.SizeInBytes = sizeof(DX12ResourceManager::DX12Camera);
 
 	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
 	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
@@ -198,7 +198,7 @@ void ResourceManager::initGlobalDescriptors() {
 	// CBV post processing params
 	cbvDesc = {};
 	cbvDesc.BufferLocation = toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = sizeof(ResourceManager::ToneMappingParams);
+	cbvDesc.SizeInBytes = sizeof(DX12ResourceManager::ToneMappingParams);
 	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
 	
 	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
@@ -206,7 +206,7 @@ void ResourceManager::initGlobalDescriptors() {
 
 }
 
-void ResourceManager::initModelBuffers() {
+void DX12ResourceManager::initModelBuffers() {
 
 	// for vertex and index buffer SRVs
 
@@ -215,7 +215,7 @@ void ResourceManager::initModelBuffers() {
 	// create upload and default buffers and store them
 	for (auto& [name, loadedModel] : meshManager->loadedModels) {
 
-		ResourceManager::DX12Model* dx12Model = new ResourceManager::DX12Model{};
+		DX12ResourceManager::DX12Model* dx12Model = new DX12ResourceManager::DX12Model{};
 
 		dx12Model->loadedModel = loadedModel;
 		dx12Models[loadedModel->name] = dx12Model;
@@ -228,8 +228,8 @@ void ResourceManager::initModelBuffers() {
 			size_t ibSize = mesh.indices.size() * sizeof(uint32_t);
 			std::cout << ": vbSize=" << vbSize << " bytes, ibSize=" << ibSize << " bytes" << std::endl;
 
-			ResourceManager::ResourceHandle *vertexBuffer = createResourceHandle(mesh.vertices.data(), vbSize, D3D12_RESOURCE_STATE_COMMON, false);
-			ResourceManager::ResourceHandle* indexBuffer = createResourceHandle(mesh.indices.data(), ibSize, D3D12_RESOURCE_STATE_COMMON, false);
+			DX12ResourceManager::ResourceHandle *vertexBuffer = createResourceHandle(mesh.vertices.data(), vbSize, D3D12_RESOURCE_STATE_COMMON, false);
+			DX12ResourceManager::ResourceHandle* indexBuffer = createResourceHandle(mesh.indices.data(), ibSize, D3D12_RESOURCE_STATE_COMMON, false);
 
 			vertexBuffer->upload_buffer->SetName(L"Object Vertex Upload Buffer");
 			indexBuffer->upload_buffer->SetName(L"Object Index Upload Buffer");
@@ -271,7 +271,7 @@ void ResourceManager::initModelBuffers() {
 
 }
 
-ResourceManager::ResourceHandle* ResourceManager::makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size) {
+DX12ResourceManager::ResourceHandle* DX12ResourceManager::makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size) {
 
 
 	auto makeBuffer = [this](UINT64 size, auto initialState) {
@@ -345,13 +345,13 @@ ResourceManager::ResourceHandle* ResourceManager::makeAccelerationStructure(cons
 
 
 	scratch->Release();
-	ResourceManager::ResourceHandle* resource_handle = new ResourceManager::ResourceHandle{};
+	DX12ResourceManager::ResourceHandle* resource_handle = new DX12ResourceManager::ResourceHandle{};
 	resource_handle->default_buffer = as;
 	return resource_handle;
 
 }
 
-void ResourceManager::initModelBLAS() {
+void DX12ResourceManager::initModelBLAS() {
 
 	if (config.debug) std::cout << "initBottomLevel()" << std::endl;
 
@@ -395,7 +395,7 @@ void ResourceManager::initModelBLAS() {
 
 }
 
-void ResourceManager::updateCamera() {
+void DX12ResourceManager::updateCamera() {
 
 	entityManager->camera->update();
 
@@ -443,15 +443,15 @@ void ResourceManager::updateCamera() {
 
 	if (!cameraConstantBuffer) {
 		std::cout << "test" << std::endl;
-		cameraConstantBuffer = new ResourceManager::ResourceHandle{};
-		createCBV(cameraConstantBuffer, sizeof(ResourceManager::DX12Camera));
+		cameraConstantBuffer = new DX12ResourceManager::ResourceHandle{};
+		createCBV(cameraConstantBuffer, sizeof(DX12ResourceManager::DX12Camera));
 		cameraConstantBuffer->upload_buffer->SetName(L"Camera Default Buffer");
 	}
 
 	void* mapped = nullptr;
 	HRESULT hr = cameraConstantBuffer->upload_buffer->Map(0, nullptr, &mapped);
 	checkHR(hr, nullptr, "memcpy Camera CBV");
-	memcpy(mapped, dx12Camera, sizeof(ResourceManager::DX12Camera));
+	memcpy(mapped, dx12Camera, sizeof(DX12ResourceManager::DX12Camera));
 	cameraConstantBuffer->upload_buffer->Unmap(0, nullptr);
 
 	// upload heap is always visible for cbv, no barriers
@@ -459,7 +459,7 @@ void ResourceManager::updateCamera() {
 
 }
 
-void ResourceManager::initScene() {
+void DX12ResourceManager::initScene() {
 
 	if (config.debug) std::cout << "initScene()" << std::endl;
 
@@ -468,7 +468,7 @@ void ResourceManager::initScene() {
 	for (size_t i = 0; i < entityManager->entitys.size(); i++) {
 
 		EntityManager::Entity* entity = entityManager->entitys[i];
-		ResourceManager::DX12Entity* dx12Entity = new ResourceManager::DX12Entity{};
+		DX12ResourceManager::DX12Entity* dx12Entity = new DX12ResourceManager::DX12Entity{};
 		dx12Entity->entity = entity;
 		dx12Entity->model = dx12Models[entity->name];
 
@@ -478,7 +478,7 @@ void ResourceManager::initScene() {
 		if (materials.find(entity->material->name) == materials.end()) {
 			std::cout << "Material doesnt exist " << std::endl;
 
-			ResourceManager::DX12Material* dx12Material = new ResourceManager::DX12Material{ entity->material };
+			DX12ResourceManager::DX12Material* dx12Material = new DX12ResourceManager::DX12Material{ entity->material };
 			materials[entity->material->name] = dx12Material;
 			dx12Entity->material = dx12Material;
 		}
@@ -505,7 +505,7 @@ void ResourceManager::initScene() {
 	instancesDesc.SampleDesc = NO_AA;
 	instancesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	instances = new ResourceManager::ResourceHandle{};
+	instances = new DX12ResourceManager::ResourceHandle{};
 	HRESULT hr = d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &instancesDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&instances->default_buffer));
 	checkHR(hr, nullptr, "initScene, CreateComittedResource: ");
 
@@ -516,11 +516,11 @@ void ResourceManager::initScene() {
 	uint32_t instanceID = -1; // user provided
 	uint32_t instanceIndex = 0;
 
-	for (ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
 
 		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
 
-		ResourceManager::ResourceHandle* objectBlas = dx12Entity->model->BLAS;
+		DX12ResourceManager::ResourceHandle* objectBlas = dx12Entity->model->BLAS;
 		objectBlas->default_buffer->GetGPUVirtualAddress();
 
 		if (uniqueInstancesID.find(dx12Entity->entity->name) == uniqueInstancesID.end()) {
@@ -549,7 +549,7 @@ void ResourceManager::initScene() {
 
 }
 
-void ResourceManager::updateTransforms() {
+void DX12ResourceManager::updateTransforms() {
 
 	//if (debugstage) std::cout << "Update Transforms" << std::endl;
 
@@ -559,14 +559,17 @@ void ResourceManager::updateTransforms() {
 
 	// apply meshes stored transform
 
-	for (ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
 
 		auto vecRotation = dx12Entity->entity->rotation;
 		auto vecPosition = dx12Entity->entity->position;
+		auto vecScale = dx12Entity->entity->scale;
 
 		auto transform = DirectX::XMMatrixRotationRollPitchYaw(vecRotation.x, vecRotation.y, vecRotation.z);
-		//transform = DirectX::XMMatrixRotationRollPitchYaw(time / 2, time / 3, time / 5); // alternative, scale by time
+
 		transform *= DirectX::XMMatrixTranslation(vecPosition.x, vecPosition.y, vecPosition.z);
+
+		transform *= DirectX::XMMatrixScaling(vecScale.x, vecScale.y, vecScale.z);
 
 		auto* ptr = reinterpret_cast<DirectX::XMFLOAT3X4*>(&instanceData[currentInstance].Transform);
 		XMStoreFloat3x4(ptr, transform);
@@ -577,7 +580,7 @@ void ResourceManager::updateTransforms() {
 
 }
 
-void ResourceManager::initMaterialBuffer() {
+void DX12ResourceManager::initMaterialBuffer() {
 
 	if (config.debug) std::cout << "initMaterialBuffer()" << std::endl;
 
@@ -591,11 +594,11 @@ void ResourceManager::initMaterialBuffer() {
 
 	uint32_t instanceIndex = -1;
 
-	for (ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
 
 		std::cout << "Entity Name: " << dx12Entity->entity->name << std::endl;
 
-		ResourceManager::DX12Material* dx12Mateiral = dx12Entity->material;
+		DX12ResourceManager::DX12Material* dx12Mateiral = dx12Entity->material;
 		std::cout << "Material name: " << dx12Entity->entity->material->name << std::endl;
 
 		if (uniqueInstancesID.find(dx12Entity->entity->material->name) == uniqueInstancesID.end()) {
@@ -618,7 +621,7 @@ void ResourceManager::initMaterialBuffer() {
 	if (config.debug) std::cout << "materialIndex.size(): " << materialIndices.size() << std::endl;
 
 
-	size_t materialsSize = dx12Materials.size() * sizeof(ResourceManager::DX12Material);
+	size_t materialsSize = dx12Materials.size() * sizeof(DX12ResourceManager::DX12Material);
 	size_t indexSize = materialIndices.size() * sizeof(uint32_t);
 
 	materialsBuffer = createResourceHandle(dx12Materials.data(), materialsSize, D3D12_RESOURCE_STATE_COMMON, false);
@@ -637,7 +640,7 @@ void ResourceManager::initMaterialBuffer() {
 
 }
 
-void ResourceManager::initTopLevelAS() {
+void DX12ResourceManager::initTopLevelAS() {
 
 	tlas_scratch = new ResourceHandle{};
 	tlas = new ResourceHandle{};
@@ -698,20 +701,20 @@ void ResourceManager::initTopLevelAS() {
 	delete tlas_scratch;
 }
 
-void ResourceManager::initVertexIndexBuffers() {
+void DX12ResourceManager::initVertexIndexBuffers() {
 
 	allVertexBuffers.clear();
 	allIndexBuffers.clear();
 
 	uniqueInstances.clear();
-	for (ResourceManager::DX12Entity* dx12SceneObject : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12SceneObject : dx12Entitys) {
 
 
 		if (uniqueInstances.count(dx12SceneObject->entity->name) == 0) {
 
 			uniqueInstances.insert(dx12SceneObject->entity->name);
-			std::vector<ResourceManager::ResourceHandle*> indexBuffers = dx12SceneObject->model->indexBuffers;
-			std::vector<ResourceManager::ResourceHandle*> vertexBuffers = dx12SceneObject->model->vertexBuffers;
+			std::vector<DX12ResourceManager::ResourceHandle*> indexBuffers = dx12SceneObject->model->indexBuffers;
+			std::vector<DX12ResourceManager::ResourceHandle*> vertexBuffers = dx12SceneObject->model->vertexBuffers;
 
 			size_t bufferSize = indexBuffers.size();
 
@@ -725,7 +728,7 @@ void ResourceManager::initVertexIndexBuffers() {
 
 }
 
-void ResourceManager::updateRand() {
+void DX12ResourceManager::updateRand() {
 
 	std::cout << "update rand" << std::endl;
 
@@ -762,7 +765,7 @@ void ResourceManager::updateRand() {
 
 }
 
-void ResourceManager::initMaxLumBuffer() {
+void DX12ResourceManager::initMaxLumBuffer() {
 
 	std::vector<UINT> lum;
 	lum.resize(1);
@@ -774,12 +777,12 @@ void ResourceManager::initMaxLumBuffer() {
 
 };
 
-void ResourceManager::updateToneParams() {
+void DX12ResourceManager::updateToneParams() {
 
 	//if (config.debug) std::cout << "updateTonePrams" << std::endl;
 
 	if (!toneMappingParams) {
-		toneMappingParams = new ResourceManager::ToneMappingParams();
+		toneMappingParams = new DX12ResourceManager::ToneMappingParams();
 	}
 
 	toneMappingParams->numIts = iterations;
@@ -787,21 +790,21 @@ void ResourceManager::updateToneParams() {
 	if (!toneMappingConstantBuffer) {
 
 		std::cout << "Creating tone mapping buffer" << std::endl;
-		toneMappingConstantBuffer = new ResourceManager::ResourceHandle();
-		createCBV(toneMappingConstantBuffer, sizeof(ResourceManager::ToneMappingParams));
+		toneMappingConstantBuffer = new DX12ResourceManager::ResourceHandle();
+		createCBV(toneMappingConstantBuffer, sizeof(DX12ResourceManager::ToneMappingParams));
 		toneMappingConstantBuffer->upload_buffer->SetName(L"Tone Mapping Default Buffer");
 	}
 
 	void* mapped = nullptr;
 	toneMappingConstantBuffer->upload_buffer->Map(0, nullptr, &mapped);
-	memcpy(mapped, toneMappingParams, sizeof(ResourceManager::ToneMappingParams));
+	memcpy(mapped, toneMappingParams, sizeof(DX12ResourceManager::ToneMappingParams));
 	toneMappingConstantBuffer->upload_buffer->Unmap(0, nullptr);
 
 }
 
 // utility
 
-void ResourceManager::initRenderTarget(ResourceHandle* resource_handle, std::string resource_name) {
+void DX12ResourceManager::initRenderTarget(ResourceHandle* resource_handle, std::string resource_name) {
 
 	std::cout << "initRenderTarget" << std::endl;
 
@@ -825,7 +828,7 @@ void ResourceManager::initRenderTarget(ResourceHandle* resource_handle, std::str
 
 }
 
-void ResourceManager::initAccumulationTexture(ResourceHandle* resource_handle, std::string resource_name) {
+void DX12ResourceManager::initAccumulationTexture(ResourceHandle* resource_handle, std::string resource_name) {
 
 	D3D12_RESOURCE_DESC accumDesc = {};
 	accumDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -844,7 +847,7 @@ void ResourceManager::initAccumulationTexture(ResourceHandle* resource_handle, s
 
 }
 
-ResourceManager::ResourceHandle* ResourceManager::createResourceHandle(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV) {
+DX12ResourceManager::ResourceHandle* DX12ResourceManager::createResourceHandle(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV) {
 	std::cout << "byteSize: " << byteSize << std::endl;
 
 	// CPU Buffer (upload buffer)
@@ -894,13 +897,13 @@ ResourceManager::ResourceHandle* ResourceManager::createResourceHandle(const voi
 		IID_PPV_ARGS(&target)
 	);
 
-	ResourceManager::ResourceHandle* resource_handle = new ResourceManager::ResourceHandle();
+	DX12ResourceManager::ResourceHandle* resource_handle = new DX12ResourceManager::ResourceHandle();
 	resource_handle->upload_buffer = upload;
 	resource_handle->default_buffer = target;
 	return resource_handle;
 }
 
-void ResourceManager::createCBV(ResourceManager::ResourceHandle* resource_handle, size_t byte_size) {
+void DX12ResourceManager::createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size) {
 
 	D3D12_RESOURCE_DESC cbDesc = {};
 	cbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -926,7 +929,7 @@ void ResourceManager::createCBV(ResourceManager::ResourceHandle* resource_handle
 
 }
 
-void ResourceManager::pushResourceHandle(ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after) {
+void DX12ResourceManager::pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after) {
 
 	// Barrier - transition vertex target to COPY_DEST
 	D3D12_RESOURCE_BARRIER barrier = {};
@@ -950,7 +953,7 @@ void ResourceManager::pushResourceHandle(ResourceManager::ResourceHandle* resour
 
 // helper
 
-void ResourceManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context) {
+void DX12ResourceManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context) {
 	if (FAILED(hr)) {
 		std::cerr << context << "HRESULT 0x" << std::hex << hr << std::endl;
 		if (hr == E_OUTOFMEMORY) std::cerr << "(Out of memory?)\n";
@@ -962,7 +965,7 @@ void ResourceManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string conte
 	}
 }
 
-void ResourceManager::waitForGPU() {
+void DX12ResourceManager::waitForGPU() {
 
 	const UINT64 currentFence = fenceState;
 	cmdQueue->Signal(fence, currentFence);

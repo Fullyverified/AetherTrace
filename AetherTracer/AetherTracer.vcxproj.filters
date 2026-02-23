@@ -54,7 +54,7 @@
     <ClCompile Include="DX12Renderer.cpp">
       <Filter>Source Files\DX12</Filter>
     </ClCompile>
-    <ClCompile Include="ResourceManager.cpp">
+    <ClCompile Include="DX12ResourceManager.cpp">
       <Filter>Source Files\DX12</Filter>
     </ClCompile>
   </ItemGroup>
@@ -92,7 +92,7 @@
     <ClInclude Include="DX12Renderer.h">
       <Filter>Header Files\DX12</Filter>
     </ClInclude>
-    <ClInclude Include="ResourceManager.h">
+    <ClInclude Include="DX12ResourceManager.h">
       <Filter>Header Files\DX12</Filter>
     </ClInclude>
   </ItemGroup>

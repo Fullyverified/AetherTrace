@@ -138,7 +138,7 @@
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshManager.cpp" />
-    <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="DX12ResourceManager.cpp" />
     <ClCompile Include="UI.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
@@ -153,7 +153,7 @@
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="MaterialManager.h" />
     <ClInclude Include="MeshManager.h" />
-    <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="DX12ResourceManager.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="Vector.h" />
     <ClInclude Include="Window.h" />

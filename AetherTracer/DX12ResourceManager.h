@@ -14,7 +14,7 @@
 
 
 
-class ResourceManager {
+class DX12ResourceManager {
 public:
 
 	struct ResourceHandle {
@@ -46,13 +46,13 @@ public:
 
 	};
 
-	ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager);
-	~ResourceManager() {};
+	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager);
+	~DX12ResourceManager() {};
 
 	
 	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
-	void pushResourceHandle(ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
-	void createCBV(ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
+	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
+	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
 	ResourceHandle* makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size = nullptr);
 
@@ -73,7 +73,7 @@ public:
 	void updateTransforms();
 	void updateRand();
 
-	void initDescriptorHeap(ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
+	void initDescriptorHeap(DX12ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
 
 	void initGlobalDescriptors();
 
@@ -116,7 +116,7 @@ public:
 	struct DX12Entity {
 		DX12Entity() : entity(nullptr), model(nullptr) {};
 
-		EntityManager::Entity* entity; // name, position, rotation
+		EntityManager::Entity* entity; // name, position, rotation, scale
 		DX12Model* model;
 		DX12Material* material;
 	};

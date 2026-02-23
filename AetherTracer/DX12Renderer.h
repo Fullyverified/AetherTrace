@@ -19,7 +19,7 @@
 #include "EntityManager.h"
 #include "Vector.h"
 
-#include "ResourceManager.h"
+#include "DX12ResourceManager.h"
 #include "Window.h"
 
 #include <imgui.h>
@@ -137,6 +137,6 @@ public:
 	MeshManager* meshManager;
 	MaterialManager* materialManager;
 	EntityManager* entityManager;
-	ResourceManager* rm;
+	DX12ResourceManager* rm;
 	Window* window;
 };

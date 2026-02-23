@@ -14,15 +14,16 @@ public:
 	struct Entity {
 
 
-		Entity(std::string name) : name(name), position{ 0, 0, 0 }, rotation{ 0, 0, 0 }, material(nullptr) {};
+		Entity(std::string name) : name(name), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{1.0f, 1.0f, 1.0f}, material(nullptr) {};
 
-		Entity(std::string name, PT::Vector3 position, PT::Vector3 rotation) : name(name), position(position), rotation(rotation), material(nullptr) {};
+		Entity(std::string name, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale) : name(name), position(position), rotation(rotation), scale(scale), material(nullptr) {};
 
-		Entity(std::string name, PT::Vector3 position, PT::Vector3 rotation, MaterialManager::Material* material) : name(name), position(position), rotation(rotation), material(material) {};
+		Entity(std::string name, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, MaterialManager::Material* material) : name(name), position(position), rotation(rotation), scale(scale), material(material) {};
 
 		std::string name; // name in assets folder
 		PT::Vector3 position;
 		PT::Vector3 rotation;
+		PT::Vector3 scale;
 		MaterialManager::Material* material;
 	};
 
