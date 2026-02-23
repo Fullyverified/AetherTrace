@@ -171,10 +171,10 @@ public:
 	ResourceHandle* renderTarget;
 
 	struct alignas(256)ToneMappingParams {
-		ToneMappingParams() : stage(0), numIts(1), exposure(1.0f) {};
+		ToneMappingParams() : stage(0), num_samples(1), exposure(1.0f) {};
 		UINT stage;
 		float exposure;
-		UINT numIts;
+		UINT num_samples;
 	};
 	ToneMappingParams* toneMappingParams;
 	ResourceHandle* toneMappingConstantBuffer;
@@ -188,7 +188,8 @@ public:
 	std::vector<uint64_t> randPattern;
 
 
-	UINT iterations = 1;
+	UINT samples = 0;
+	UINT frames = 0;
 	UINT seed = 1;
 
 	UINT frameIndexInFlight = 2;

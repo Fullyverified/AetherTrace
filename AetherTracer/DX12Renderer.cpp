@@ -585,16 +585,15 @@ void DX12Renderer::postProcess() {
 
 void DX12Renderer::render() {
 
-	rm->waitForGPU();
+	rm->frames = (config.accumulate & !entityManager->camera->camMoved) ? rm->frames + 1 : 1;
+	rm->samples = rm->frames * config.raysPerPixel;
+	rm->seed++;
 
 	bindDescriptors();
 
 	rm->updateCamera();
 	traceRays();
 	postProcess();
-
-	rm->iterations = (config.accumulate & !entityManager->camera->camMoved) ? rm->iterations + config.raysPerPixel : config.raysPerPixel;
-	rm->seed++;
 
 	ImGui::Render();
 

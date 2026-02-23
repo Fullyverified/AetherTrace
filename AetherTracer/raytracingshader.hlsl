@@ -544,6 +544,6 @@ void Miss(inout Payload payload)
     float slope = normalize(WorldRayDirection()).y;
     float t = saturate(slope * 2 + 0.5);
     payload.throughput *= lerp(skyBottom, skyTop, t);
-    payload.emission = skyBrightness;
+    payload.emission = float3(skyBrightness, skyBrightness, skyBrightness);
     return;
 }

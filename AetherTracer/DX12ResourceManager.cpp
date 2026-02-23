@@ -58,7 +58,7 @@ void DX12ResourceManager::initGlobalDescriptors() {
 
 	// UAV for accumulation texture
 	uavDesc = {
-		.Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+		.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
 		.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D
 	};
 	d3dDevice->CreateUnorderedAccessView(accumulationTexture->default_buffer, nullptr, &uavDesc, cpuHandle);
@@ -163,7 +163,7 @@ void DX12ResourceManager::initGlobalDescriptors() {
 
 	// SRV for accumulationTexture
 	srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
@@ -565,14 +565,14 @@ void DX12ResourceManager::updateTransforms() {
 		auto vecPosition = dx12Entity->entity->position;
 		auto vecScale = dx12Entity->entity->scale;
 
-		auto transform = DirectX::XMMatrixRotationRollPitchYaw(vecRotation.x, vecRotation.y, vecRotation.z);
+		DirectX::XMMATRIX worldTransform = DirectX::XMMatrixScaling(vecScale.x, vecScale.y, vecScale.z);
+			
+		worldTransform *= DirectX::XMMatrixRotationRollPitchYaw(vecRotation.x, vecRotation.y, vecRotation.z);
 
-		transform *= DirectX::XMMatrixTranslation(vecPosition.x, vecPosition.y, vecPosition.z);
-
-		transform *= DirectX::XMMatrixScaling(vecScale.x, vecScale.y, vecScale.z);
+		worldTransform *= DirectX::XMMatrixTranslation(vecPosition.x, vecPosition.y, vecPosition.z);
 
 		auto* ptr = reinterpret_cast<DirectX::XMFLOAT3X4*>(&instanceData[currentInstance].Transform);
-		XMStoreFloat3x4(ptr, transform);
+		XMStoreFloat3x4(ptr, worldTransform);
 
 		currentInstance++;
 
@@ -753,8 +753,8 @@ void DX12ResourceManager::updateRand() {
 
 			word = (word >> rot) | (word << (32u - rot));
 
-			randPattern[x + y * width] = word;
-			//rm->randPattern[x + y * rm->width] = dist(gen);
+			//randPattern[x + y * width] = word;
+			randPattern[x + y * width] = dist(gen);
 		}
 	}
 
@@ -785,7 +785,7 @@ void DX12ResourceManager::updateToneParams() {
 		toneMappingParams = new DX12ResourceManager::ToneMappingParams();
 	}
 
-	toneMappingParams->numIts = iterations;
+	toneMappingParams->num_samples = samples;
 
 	if (!toneMappingConstantBuffer) {
 
@@ -836,7 +836,7 @@ void DX12ResourceManager::initAccumulationTexture(ResourceHandle* resource_handl
 	accumDesc.Height = height;
 	accumDesc.DepthOrArraySize = 1;
 	accumDesc.MipLevels = 1;
-	accumDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	accumDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	accumDesc.SampleDesc = NO_AA;
 	accumDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 

@@ -2,7 +2,7 @@ cbuffer Params : register(b1)
 {
     uint stage;
     float exposure;
-    uint numIterations;
+    uint num_samples;
 }
 
 Texture2D<float4> accumulationTexture : register(t0, space0);
@@ -62,7 +62,7 @@ void toneMap(uint3 dispatchID : SV_DispatchThreadID, uint3 groupThreadID : SV_Gr
     
     float3 accum = accumulationTexture.Load(int3(dispatchID.xy, 0)).rgb;
     
-    accum /= (float) numIterations;
+    accum /= (float) num_samples;
     
     float luminance = 0.2126f * accum.r + 0.7152f * accum.g + 0.0722f * accum.b;
     
