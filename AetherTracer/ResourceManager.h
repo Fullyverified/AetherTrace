@@ -76,7 +76,6 @@ public:
 	void initDescriptorHeap(ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
 
 	void initGlobalDescriptors();
-	void initUAVClearDescriptors();
 
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);

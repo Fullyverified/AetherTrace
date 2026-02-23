@@ -52,8 +52,6 @@ void DX12Renderer::init() {
 
 	rm->initDescriptorHeap(rm->global_descriptor_heap_allocator, 1000, true, "Global Descriptor Heap");
 
-	//rm->initDescriptorHeap(rm->UAVClear_descriptor_heap_allocator, 30, false, "UAVClear Descriptor Heap");
-
 	std::cout << "init RTResources" << std::endl;
 	rm->updateCamera();
 	rm->initAccumulationTexture(rm->accumulationTexture, "Accumulation Texture");
@@ -81,7 +79,6 @@ void DX12Renderer::init() {
 
 	std::cout << "init Global Descriptor Heap" << std::endl;
 	rm->initGlobalDescriptors();
-	//rm->initUAVClearDescriptors();
 
 	initRootSignature();
 	initComputePipeline();

@@ -206,21 +206,6 @@ void ResourceManager::initGlobalDescriptors() {
 
 }
 
-void ResourceManager::initUAVClearDescriptors() {
-
-	// Create views
-	//D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = UAVClear_descriptor_heap_allocator->desc_heap->GetCPUDescriptorHandleForHeapStart();
-
-	//D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	//uavDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	//uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	//d3dDevice->CreateUnorderedAccessView(accumulationTexture->default_buffer, nullptr, &uavDesc, cpuHandle);
-
-	//cpuHandle.ptr += UAVClear_descriptor_heap_allocator->desc_increment_size;
-	//accumulationTexture->heap_index_uav = UAVClear_descriptor_heap_allocator->alloc();
-
-}
-
 void ResourceManager::initModelBuffers() {
 
 	// for vertex and index buffer SRVs
