@@ -36,6 +36,8 @@ void DX12Renderer::init() {
 
 	rm->hwnd = static_cast<HWND>(window->getNativeHandle());
 
+	loadShaders();
+
 	initDevice();
 	initSurfaces();
 	initCommand();
@@ -48,25 +50,22 @@ void DX12Renderer::init() {
 
 	std::cout << "init Descriptor Heaps" << std::endl;
 
-	rm->initDescriptorHeap(rm->global_descriptor_heap_allocator, 100000, true, "Global Descriptor Heap");
+	rm->initDescriptorHeap(rm->global_descriptor_heap_allocator, 1000, true, "Global Descriptor Heap");
 
-	rm->initDescriptorHeap(rm->UAVClear_descriptor_heap_allocator, 30, false, "UAVClear Descriptor Heap");
+	//rm->initDescriptorHeap(rm->UAVClear_descriptor_heap_allocator, 30, false, "UAVClear Descriptor Heap");
 
 	std::cout << "init RTResources" << std::endl;
-
-	loadShaders();
 	rm->updateCamera();
 	rm->initAccumulationTexture(rm->accumulationTexture, "Accumulation Texture");
 	rm->initModelBuffers();
 
 	rm->cmdList->Close();
 	rm->cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&rm->cmdList));
-	flush();
+	rm->waitForGPU();
 	rm->cmdAlloc->Reset();
 	rm->cmdList->Reset(rm->cmdAlloc, nullptr);
 
 	rm->initModelBLAS();
-
 
 	rm->initScene();
 	rm->initTopLevelAS();
@@ -74,30 +73,27 @@ void DX12Renderer::init() {
 	rm->initVertexIndexBuffers();
 	rm->updateTransforms();
 
-	std::cout << "init ComputeResources" << std::endl;
 	rm->initRenderTarget(rm->renderTarget, "Render Target");
 	rm->updateRand();
 	rm->updateToneParams();
 	rm->initMaxLumBuffer();
 
+
 	std::cout << "init Global Descriptor Heap" << std::endl;
 	rm->initGlobalDescriptors();
+	//rm->initUAVClearDescriptors();
 
-	rm->initUAVClearDescriptors();
-
-	ID3D12DescriptorHeap* heaps[] = { rm->global_descriptor_heap_allocator->desc_heap };
-	rm->cmdList->SetDescriptorHeaps(1, heaps);
-
-	std::cout << "raytracingStage->initStage();" << std::endl;
 	initRootSignature();
+	initComputePipeline();
+
 	initRayTracingPipeline();
 	initRTShaderTables();
-	initComputePipeline();
-	initGPUHandle();
+
+	bindDescriptors();
 
 	rm->cmdList->Close();
 	rm->cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&rm->cmdList));
-	flush();
+	rm->waitForGPU();
 
 	rm->cmdAlloc->Reset();
 	rm->cmdList->Reset(rm->cmdAlloc, nullptr);
@@ -138,14 +134,6 @@ void DX12Renderer::initDevice() {
 		std::cout << "device nullptr" << std::endl;
 	}
 	else std::cout << "device exists" << std::endl;
-}
-
-
-// cpu gpu syncronization
-
-void DX12Renderer::flush() {
-	rm->cmdQueue->Signal(rm->fence, rm->fenceState);
-	rm->fence->SetEventOnCompletion(rm->fenceState++, nullptr);
 }
 
 // swap chain
@@ -189,7 +177,7 @@ void DX12Renderer::resize() {
 	rm->width = std::max<UINT>(rect.right - rect.left, 1);
 	rm->height = std::max<UINT>(rect.bottom - rect.top, 1);
 
-	flush();
+	rm->waitForGPU();
 
 	rm->swapChain->ResizeBuffers(0, rm->width, rm->height, DXGI_FORMAT_UNKNOWN, 0);
 
@@ -230,6 +218,7 @@ void DX12Renderer::loadShaders() {
 
 	hr = D3DReadFileToBlob(L"postprocessingshader.cso", &rm->csBlob);
 	checkHR(hr, nullptr, "Loading postprocessingshader");
+
 }
 
 void DX12Renderer::initRootSignature() {
@@ -466,14 +455,19 @@ void DX12Renderer::initComputePipeline() {
 
 }
 
-void DX12Renderer::initGPUHandle() {
+void DX12Renderer::bindDescriptors() {
+
+	ID3D12DescriptorHeap* heaps[] = { rm->global_descriptor_heap_allocator->desc_heap };
+	rm->cmdList->SetDescriptorHeaps(1, heaps);
+
+	rm->cmdList->SetComputeRootSignature(rm->rootSignature);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = rm->global_descriptor_heap_allocator->desc_heap->GetGPUDescriptorHandleForHeapStart();
-	UINT heap_start = gpuHandle.ptr;
+	UINT64 heap_start = gpuHandle.ptr;
 
 	gpuHandle.ptr = heap_start + rm->accumulationTexture->heap_index_uav * rm->global_descriptor_heap_allocator->desc_increment_size;
 	rm->cmdList->SetComputeRootDescriptorTable(0, gpuHandle); // u0 accum UAV
-
+	
 	gpuHandle.ptr = heap_start + rm->randBuffer->heap_index_uav * rm->global_descriptor_heap_allocator->desc_increment_size;
 	rm->cmdList->SetComputeRootDescriptorTable(1, gpuHandle); // u1 rand UAV
 
@@ -504,9 +498,9 @@ void DX12Renderer::initGPUHandle() {
 	rm->cmdList->SetComputeRootDescriptorTable(9, gpuHandle); // t3 material index buffer SRV
 
 
-	rm->cmdList->SetComputeRootConstantBufferView(10, rm->cameraConstantBuffer->default_buffer->GetGPUVirtualAddress()); // b0 camera cbv
+	rm->cmdList->SetComputeRootConstantBufferView(10, rm->cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // b0 camera cbv
 
-	rm->cmdList->SetComputeRootConstantBufferView(11, rm->toneMappingConstantBuffer->default_buffer->GetGPUVirtualAddress()); // maxLum, etc
+	rm->cmdList->SetComputeRootConstantBufferView(11, rm->toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // maxLum, etc
 
 
 }
@@ -518,9 +512,14 @@ void DX12Renderer::traceRays() {
 	// clear accumulation texture
 	if (!config.accumulate || entityManager->camera->camMoved || UI::accumulationUpdate || UI::accelUpdate) {
 		// slot 0 UAV for accumulation texture
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = rm->UAVClear_descriptor_heap_allocator->desc_heap->GetCPUDescriptorHandleForHeapStart();
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = rm->UAVClear_descriptor_heap_allocator->desc_heap->GetGPUDescriptorHandleForHeapStart();
-		rm->cmdList->SetComputeRootDescriptorTable(0, gpuHandle); // u0 accum UAV
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = rm->global_descriptor_heap_allocator->desc_heap->GetCPUDescriptorHandleForHeapStart();
+		UINT64 heap_start = cpuHandle.ptr;
+		cpuHandle.ptr = heap_start + rm->accumulationTexture->heap_index_uav * rm->global_descriptor_heap_allocator->desc_increment_size;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = rm->global_descriptor_heap_allocator->desc_heap->GetGPUDescriptorHandleForHeapStart();
+		heap_start = gpuHandle.ptr;
+		gpuHandle.ptr = heap_start + rm->accumulationTexture->heap_index_uav * rm->global_descriptor_heap_allocator->desc_increment_size;
+
 		rm->cmdList->ClearUnorderedAccessViewFloat(gpuHandle, cpuHandle, rm->accumulationTexture->default_buffer, rm->clearColor, 0, nullptr);
 
 		UI::numRays = config.raysPerPixel;
@@ -565,7 +564,7 @@ void DX12Renderer::postProcess() {
 
 	// tone mapping
 
-	rm->cmdList->SetPipelineState1(rm->computePSO);
+	rm->cmdList->SetPipelineState(rm->computePSO);
 
 	// start compute shader
 
@@ -596,6 +595,10 @@ void DX12Renderer::postProcess() {
 
 void DX12Renderer::render() {
 
+	rm->waitForGPU();
+
+	bindDescriptors();
+
 	rm->updateCamera();
 	traceRays();
 	postProcess();
@@ -604,6 +607,7 @@ void DX12Renderer::render() {
 	rm->seed++;
 
 	ImGui::Render();
+
 }
 
 void DX12Renderer::imguiPresent(ID3D12Resource* backBuffer) {
@@ -652,7 +656,7 @@ void DX12Renderer::present() {
 	ID3D12CommandList* lists[] = { rm->cmdList };
 	rm->cmdQueue->ExecuteCommandLists(1, lists);
 
-	flush();
+	rm->waitForGPU();
 	rm->swapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
 
 	// To finish whole frame??

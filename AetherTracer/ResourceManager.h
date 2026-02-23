@@ -23,8 +23,8 @@ public:
 		ID3D12Resource* default_buffer;
 
 		// offset in the global heap
-		UINT heap_index_srv; // or cbv
-		UINT heap_index_uav;
+		UINT64 heap_index_srv; // or cbv
+		UINT64 heap_index_uav;
 	};
 
 
@@ -42,6 +42,8 @@ public:
 		void free(UINT idx) {
 			free_indices.push_back(idx);
 		}
+
+
 	};
 
 	ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager);
@@ -61,8 +63,8 @@ public:
 	void initModelBuffers();
 	void initModelBLAS();
 	void initScene();
-	void initMaterialBuffer();
 	void initTopLevelAS();
+	void initMaterialBuffer();
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
 
@@ -78,7 +80,7 @@ public:
 
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
-	void flush();
+	void waitForGPU();
 
 	// RAY TRACING STAGE
 
@@ -218,7 +220,7 @@ public:
 	ID3D12RootSignature* rootSignature;
 
 	ID3D12StateObject* raytracingPSO;
-	ID3D12StateObject* computePSO;
+	ID3D12PipelineState* computePSO;
 
 	// ray tracing shader tables
 	UINT64 NUM_SHADER_IDS = 3;
@@ -226,7 +228,7 @@ public:
 
 	// Heap Management
 	DescriptorAllocator* global_descriptor_heap_allocator;
-	DescriptorAllocator* UAVClear_descriptor_heap_allocator;
+	//DescriptorAllocator* UAVClear_descriptor_heap_allocator;
 
 
 	D3D12_HEAP_PROPERTIES UPLOAD_HEAP = { .Type = D3D12_HEAP_TYPE_UPLOAD };

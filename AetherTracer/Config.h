@@ -27,7 +27,7 @@ struct Config {
     float focalDistance = 15.0f;
  
     float exposure = 1;
-    bool sky = false;
+    bool sky = true;
     float skyBrightness = 1.0f;
 
     float mouseSensitivity = 0.1f;

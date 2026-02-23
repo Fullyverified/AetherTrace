@@ -79,6 +79,7 @@ void toneMap(uint3 dispatchID : SV_DispatchThreadID, uint3 groupThreadID : SV_Gr
        
     }
 
+   
     renderTarget[dispatchID.xy] = float4(accum, 1.0f);
 }
 

@@ -1,11 +1,13 @@
 #include "ResourceManager.h"
 #include <random>
 
+#include <d3dcompiler.h>
+
 ResourceManager::ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager)
 	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager) {
 
 	global_descriptor_heap_allocator = new ResourceManager::DescriptorAllocator{};
-	UAVClear_descriptor_heap_allocator = new ResourceManager::DescriptorAllocator{};
+	//UAVClear_descriptor_heap_allocator = new ResourceManager::DescriptorAllocator{};
 
 	renderTarget = new ResourceManager::ResourceHandle;
 	accumulationTexture = new ResourceManager::ResourceHandle;
@@ -21,6 +23,7 @@ void ResourceManager::initDescriptorHeap(ResourceManager::DescriptorAllocator* d
 		.Flags = flags
 	};
 
+	std::cout << "d3dDevice->CreateDescriptorHeap" << std::endl;
 	HRESULT hr = d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&descriptor_allocator->desc_heap));
 
 	checkHR(hr, nullptr, "Creating " + descriptor_name);
@@ -33,9 +36,9 @@ void ResourceManager::initDescriptorHeap(ResourceManager::DescriptorAllocator* d
 
 	descriptor_allocator->desc_increment_size = d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	
-	descriptor_allocator->free_indices.resize(num_descriptors);
+	std::cout << "Filling free indices" << std::endl;
 
-	for (size_t i = 0; i < num_descriptors; i++) {
+	for (int i = num_descriptors - 1; i >= 0; i--) {
 		descriptor_allocator->free_indices.push_back(i);
 	}
 
@@ -61,6 +64,9 @@ void ResourceManager::initGlobalDescriptors() {
 	d3dDevice->CreateUnorderedAccessView(accumulationTexture->default_buffer, nullptr, &uavDesc, cpuHandle);
 	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
 	accumulationTexture->heap_index_uav = global_descriptor_heap_allocator->alloc();
+	
+	std::cout << "accumulationTexture->heap_index_uav: " << accumulationTexture->heap_index_uav << std::endl;
+
 
 	// UAV for RNG Buffer
 	uavDesc = {};
@@ -73,6 +79,8 @@ void ResourceManager::initGlobalDescriptors() {
 	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
 	randBuffer->heap_index_uav = global_descriptor_heap_allocator->alloc();
 
+	std::cout << "randBuffer->heap_index_uav: " << randBuffer->heap_index_uav << std::endl;
+
 	// SRV for TLAS
 	srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -83,6 +91,8 @@ void ResourceManager::initGlobalDescriptors() {
 	d3dDevice->CreateShaderResourceView(nullptr, &srvDesc, cpuHandle);
 	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
 	tlas->heap_index_srv = global_descriptor_heap_allocator->alloc();
+
+	std::cout << "tlas->heap_index_srv: " << tlas->heap_index_srv << std::endl;
 
 	// Vertex Buffer
 	for (ResourceManager::ResourceHandle* vertexBuffer : allVertexBuffers) {
@@ -97,6 +107,7 @@ void ResourceManager::initGlobalDescriptors() {
 
 		cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
 		vertexBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
+
 		std::cout << "srvNumElementsVertex: " << srvDesc.Buffer.NumElements << std::endl;
 	}
 	// Vertex Index Buffer
@@ -143,7 +154,7 @@ void ResourceManager::initGlobalDescriptors() {
 
 	// Camera CBV
 	cbvDesc = {};
-	cbvDesc.BufferLocation = cameraConstantBuffer->default_buffer->GetGPUVirtualAddress();
+	cbvDesc.BufferLocation = cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress();
 	cbvDesc.SizeInBytes = sizeof(ResourceManager::DX12Camera);
 
 	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
@@ -186,7 +197,7 @@ void ResourceManager::initGlobalDescriptors() {
 
 	// CBV post processing params
 	cbvDesc = {};
-	cbvDesc.BufferLocation = toneMappingConstantBuffer->default_buffer->GetGPUVirtualAddress();
+	cbvDesc.BufferLocation = toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress();
 	cbvDesc.SizeInBytes = sizeof(ResourceManager::ToneMappingParams);
 	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
 	
@@ -198,15 +209,15 @@ void ResourceManager::initGlobalDescriptors() {
 void ResourceManager::initUAVClearDescriptors() {
 
 	// Create views
-	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = UAVClear_descriptor_heap_allocator->desc_heap->GetCPUDescriptorHandleForHeapStart();
+	//D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = UAVClear_descriptor_heap_allocator->desc_heap->GetCPUDescriptorHandleForHeapStart();
 
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	d3dDevice->CreateUnorderedAccessView(accumulationTexture->default_buffer, nullptr, &uavDesc, cpuHandle);
+	//D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	//uavDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	//uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	//d3dDevice->CreateUnorderedAccessView(accumulationTexture->default_buffer, nullptr, &uavDesc, cpuHandle);
 
-	cpuHandle.ptr += UAVClear_descriptor_heap_allocator->desc_increment_size;
-	accumulationTexture->heap_index_uav = UAVClear_descriptor_heap_allocator->alloc();
+	//cpuHandle.ptr += UAVClear_descriptor_heap_allocator->desc_increment_size;
+	//accumulationTexture->heap_index_uav = UAVClear_descriptor_heap_allocator->alloc();
 
 }
 
@@ -343,7 +354,7 @@ ResourceManager::ResourceHandle* ResourceManager::makeAccelerationStructure(cons
 	cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 	cmdList->Close();
 	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
-	flush();
+	waitForGPU();
 	cmdAlloc->Reset();
 	cmdList->Reset(cmdAlloc, nullptr);
 
@@ -446,16 +457,17 @@ void ResourceManager::updateCamera() {
 
 
 	if (!cameraConstantBuffer) {
+		std::cout << "test" << std::endl;
 		cameraConstantBuffer = new ResourceManager::ResourceHandle{};
-		cameraConstantBuffer = createResourceHandle(dx12Camera, sizeof(ResourceManager::DX12Camera), D3D12_RESOURCE_STATE_COMMON, false);
-		cameraConstantBuffer->default_buffer->SetName(L"Camera Default Buffer");
 		createCBV(cameraConstantBuffer, sizeof(ResourceManager::DX12Camera));
+		cameraConstantBuffer->upload_buffer->SetName(L"Camera Default Buffer");
 	}
 
 	void* mapped = nullptr;
-	cameraConstantBuffer->default_buffer->Map(0, nullptr, &mapped);
+	HRESULT hr = cameraConstantBuffer->upload_buffer->Map(0, nullptr, &mapped);
+	checkHR(hr, nullptr, "memcpy Camera CBV");
 	memcpy(mapped, dx12Camera, sizeof(ResourceManager::DX12Camera));
-	cameraConstantBuffer->default_buffer->Unmap(0, nullptr);
+	cameraConstantBuffer->upload_buffer->Unmap(0, nullptr);
 
 	// upload heap is always visible for cbv, no barriers
 
@@ -693,7 +705,7 @@ void ResourceManager::initTopLevelAS() {
 
 	cmdList->Close();
 	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
-	flush();
+	waitForGPU();
 	cmdAlloc->Reset();
 	cmdList->Reset(cmdAlloc, nullptr);
 
@@ -792,13 +804,13 @@ void ResourceManager::updateToneParams() {
 		std::cout << "Creating tone mapping buffer" << std::endl;
 		toneMappingConstantBuffer = new ResourceManager::ResourceHandle();
 		createCBV(toneMappingConstantBuffer, sizeof(ResourceManager::ToneMappingParams));
-		toneMappingConstantBuffer->default_buffer->SetName(L"Tone Mapping Default Buffer");
+		toneMappingConstantBuffer->upload_buffer->SetName(L"Tone Mapping Default Buffer");
 	}
 
 	void* mapped = nullptr;
-	toneMappingConstantBuffer->default_buffer->Map(0, nullptr, &mapped);
+	toneMappingConstantBuffer->upload_buffer->Map(0, nullptr, &mapped);
 	memcpy(mapped, toneMappingParams, sizeof(ResourceManager::ToneMappingParams));
-	toneMappingConstantBuffer->default_buffer->Unmap(0, nullptr);
+	toneMappingConstantBuffer->upload_buffer->Unmap(0, nullptr);
 
 }
 
@@ -923,7 +935,7 @@ void ResourceManager::createCBV(ResourceManager::ResourceHandle* resource_handle
 		&cbDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ, // cbv
 		nullptr,
-		IID_PPV_ARGS(&resource_handle->default_buffer)
+		IID_PPV_ARGS(&resource_handle->upload_buffer)
 	);
 	checkHR(hr, nullptr, "Create camera CB");
 
@@ -965,7 +977,15 @@ void ResourceManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string conte
 	}
 }
 
-void ResourceManager::flush() {
-	cmdQueue->Signal(fence, fenceState);
-	fence->SetEventOnCompletion(fenceState++, nullptr);
+void ResourceManager::waitForGPU() {
+
+	const UINT64 currentFence = fenceState;
+	cmdQueue->Signal(fence, currentFence);
+	if (fence->GetCompletedValue() < currentFence) {
+		HANDLE event = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
+		fence->SetEventOnCompletion(currentFence, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	fenceState++;
 }

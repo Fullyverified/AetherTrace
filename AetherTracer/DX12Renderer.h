@@ -104,7 +104,6 @@ public:
 
 	void init();
 	void initDevice();
-	void flush();
 	void initSurfaces();
 	void resize();
 	void initCommand();
@@ -113,8 +112,8 @@ public:
 	void initRootSignature();
 	void initRayTracingPipeline();
 	void initComputePipeline();
-	void initGPUHandle();
 	void initRTShaderTables();
+	void bindDescriptors();
 
 	void traceRays();
 	void postProcess();
