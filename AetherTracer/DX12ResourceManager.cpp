@@ -533,6 +533,9 @@ void DX12ResourceManager::initScene() {
 
 		std::cout << "InstanceIndex: " << instanceIndex << std::endl;
 		std::cout << "InstanceID: " << instanceID << std::endl;
+		std::cout << "entity: " << dx12Entity->entity->name << std::endl;
+		std::cout << "model: " << dx12Entity->entity->model << std::endl;
+
 
 		instanceData[instanceIndex] = {
 			.InstanceID = static_cast<UINT>(instanceID),
@@ -550,7 +553,7 @@ void DX12ResourceManager::initScene() {
 
 	DX12Model* dummyModel = dx12Models["cube"];
 
-	for (UINT i = dx12Entitys.size() - 1; i < config.maxInstances; i++) {
+	for (UINT i = dx12Entitys.size(); i < config.maxInstances; i++) {
 		
 		instanceData[instanceIndex] = {
 			.InstanceID = static_cast<UINT>(instanceID),
@@ -559,7 +562,8 @@ void DX12ResourceManager::initScene() {
 			.Flags = 0,
 			.AccelerationStructure = dummyModel->BLAS->default_buffer->GetGPUVirtualAddress(),
 		};
-	
+
+		instanceIndex++;
 	}
 
 	updateTransforms();
@@ -596,7 +600,7 @@ void DX12ResourceManager::updateTransforms() {
 
 }
 
-void DX12ResourceManager::initMaterialBuffer() {
+void DX12ResourceManager::initMaterialBuffer(bool is_update) {
 
 	if (config.debug) std::cout << "initMaterialBuffer()" << std::endl;
 
@@ -640,8 +644,15 @@ void DX12ResourceManager::initMaterialBuffer() {
 	size_t materialsSize = dx12Materials.size() * sizeof(DX12ResourceManager::DX12Material);
 	size_t indexSize = materialIndices.size() * sizeof(uint32_t);
 
-	materialsBuffer = createResourceHandle(dx12Materials.data(), materialsSize, D3D12_RESOURCE_STATE_COMMON, false);
-	materialIndexBuffer = createResourceHandle(materialIndices.data(), indexSize, D3D12_RESOURCE_STATE_COMMON, false);
+	if (!is_update) {
+		materialsBuffer = createResourceHandle(dx12Materials.data(), materialsSize, D3D12_RESOURCE_STATE_COMMON, false);
+		materialIndexBuffer = createResourceHandle(materialIndices.data(), indexSize, D3D12_RESOURCE_STATE_COMMON, false);
+	}
+	else {
+		updateResourceHandle(materialsBuffer, dx12Materials.data(), materialsSize, D3D12_RESOURCE_STATE_COMMON, false);
+		updateResourceHandle(materialIndexBuffer, materialIndices.data(), indexSize, D3D12_RESOURCE_STATE_COMMON, false);
+	}
+	
 
 	materialsBuffer->upload_buffer->SetName(L"Materials Upload Buffer");
 	materialIndexBuffer->upload_buffer->SetName(L"Materials Index Upload Default Buffer");
@@ -989,6 +1000,49 @@ DX12ResourceManager::ResourceHandle* DX12ResourceManager::createResourceHandle(c
 	resource_handle->upload_buffer = upload;
 	resource_handle->default_buffer = target;
 	return resource_handle;
+}
+
+void DX12ResourceManager::updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV) {
+	std::cout << "byteSize: " << byteSize << std::endl;
+
+	resource_handle->upload_buffer->Release();
+	resource_handle->default_buffer->Release();
+
+	// CPU Buffer (upload buffer)
+	D3D12_RESOURCE_DESC DESC = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Width = byteSize,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.SampleDesc = NO_AA,
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_NONE,
+	};
+
+
+	ID3D12Resource* upload;
+	d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload));
+
+	void* mapped;
+	upload->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
+	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	upload->Unmap(0, nullptr); // 7
+
+	// VRAM Buffer
+
+	D3D12_HEAP_PROPERTIES DEFAULT_HEAP = { .Type = D3D12_HEAP_TYPE_DEFAULT };
+
+	// Create target buffer in DEFAULT heap
+
+	if (UAV) {
+		DESC.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+	ID3D12Resource* target = nullptr;
+	d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, finalState, nullptr, IID_PPV_ARGS(&target));
+
+	resource_handle->upload_buffer = upload;
+	resource_handle->default_buffer = target;
 }
 
 void DX12ResourceManager::createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size) {

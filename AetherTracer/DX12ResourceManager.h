@@ -51,6 +51,7 @@ public:
 
 	
 	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
 	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
@@ -64,7 +65,7 @@ public:
 	void initModelBLAS();
 	void initScene();
 	void initTopLevelAS();
-	void initMaterialBuffer();
+	void initMaterialBuffer(bool is_update);
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
 

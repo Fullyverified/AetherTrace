@@ -60,7 +60,7 @@ void DX12Renderer::init() {
 	rm->initModelBLAS(); // instanced model blas
 	rm->initScene();
 	rm->initTopLevelAS();
-	rm->initMaterialBuffer();
+	rm->initMaterialBuffer(false);
 	rm->initVertexIndexBuffers();
 
 	rm->initRenderTarget(rm->renderTarget, "Render Target");
@@ -497,12 +497,14 @@ void DX12Renderer::bindDescriptors() {
 
 void DX12Renderer::render() {
 
-	rm->frames = (config.accumulate && !entityManager->camera->camMoved && !UI::accumulationUpdate && !UI::accelUpdate) ? rm->frames + 1 : 1;
+	rm->frames = (config.accumulate && !entityManager->camera->camMoved && !UI::accumulationUpdate) ? rm->frames + 1 : 1;
 	rm->samples = rm->frames * config.raysPerPixel;
 	UI::numRays = rm->samples;
 	rm->seed++;
 
 	if (UI::accelUpdate) rm->updateTLAS();
+	if (UI::materialUpdate) rm->initMaterialBuffer(true);
+
 
 	bindDescriptors();
 
@@ -533,6 +535,7 @@ void DX12Renderer::traceRays() {
 
 		UI::accelUpdate = false;
 		UI::accumulationUpdate = false;
+		UI::materialUpdate = false;
 	}
 
 	// Dispatch rays

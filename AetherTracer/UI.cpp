@@ -14,7 +14,7 @@ MaterialManager* UI::materialManager = nullptr;
 bool UI::isWindowHovered = false;
 bool UI::accelUpdate = false; // reset by the renderer
 bool UI::accumulationUpdate = false; // reset by the renderer
-bool UI::materialUpdate = false;
+bool UI::materialUpdate = false; // reset by the renderer
 bool UI::renderUI = true;
 
 uint64_t UI::raysPerSecond = 0;
@@ -304,7 +304,7 @@ void UI::materialEditor() {
     // Drop down to select an Material
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::BeginListBox("##Materials", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 12))) {
+    if (ImGui::BeginListBox("##Materials", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 8))) {
         for (int i = 0; i < UI::materials.size(); i++) {
             ImGui::PushID(i);
 
@@ -382,6 +382,20 @@ void UI::materialEditor() {
             emission = selected_material->emission;
         
         
+        }
+
+        // Colour Editing
+        float colourArray[3] = { color.x, color.y, color.z };
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (ImGui::ColorPicker3("##Colour", colourArray, ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoSidePreview)) {
+            // Update the Vector3 with the new color values
+            color.x = colourArray[0];
+            color.y = colourArray[1];
+            color.z = colourArray[2];
+            selected_material->color = { color.x, color.y, color.z };
+            accumulationUpdate = true;
+            materialUpdate = true;
         }
 
         // General Material Editing

@@ -13,12 +13,12 @@ struct Config {
 
     // initial state
 
-    uint32_t resX = 1920;
-    uint32_t resY = 1080;
+    uint32_t resX = 1200;
+    uint32_t resY = 1200;
     uint32_t internal_resX = 0;
     uint32_t internal_resY = 0;
-    float aspectX = 16;
-    float aspectY = 9;
+    float aspectX = 1;
+    float aspectY = 1;
 
     // Multiple Importance Sampling
     int raysPerPixel = 1;
