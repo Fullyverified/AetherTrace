@@ -42,33 +42,39 @@ void InputManager::processInput(SDL_Event& event) {
 
 void InputManager::processInputContinuous(SDL_Event& event, float deltaTime) {
 
-	PT::Vector2 mousePos = { event.button.x, event.button.y };
+	const auto& io = ImGui::GetIO();
 
 	// Continuous Input
 	SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
-	if (keys[SDL_SCANCODE_W]) {
-		aetherTracer->entityManager->camera->moveForward(deltaTime);
-	}
+	PT::Vector2 mousePos = { event.button.x, event.button.y };
 
-	if (keys[SDL_SCANCODE_A]) {
-		aetherTracer->entityManager->camera->moveLeft(deltaTime);
-	}
+	if (!io.WantCaptureKeyboard) {
 
-	if (keys[SDL_SCANCODE_S]) {
-		aetherTracer->entityManager->camera->moveBack(deltaTime);
-	}
+		if (keys[SDL_SCANCODE_W]) {
+			aetherTracer->entityManager->camera->moveForward(deltaTime);
+		}
 
-	if (keys[SDL_SCANCODE_D]) {
-		aetherTracer->entityManager->camera->moveRight(deltaTime);
-	}
+		if (keys[SDL_SCANCODE_A]) {
+			aetherTracer->entityManager->camera->moveLeft(deltaTime);
+		}
 
-	if (keys[SDL_SCANCODE_SPACE]) {
-		aetherTracer->entityManager->camera->moveUp(deltaTime);
-	}
+		if (keys[SDL_SCANCODE_S]) {
+			aetherTracer->entityManager->camera->moveBack(deltaTime);
+		}
 
-	if (keys[SDL_SCANCODE_LCTRL]) {
-		aetherTracer->entityManager->camera->moveDown(deltaTime);
+		if (keys[SDL_SCANCODE_D]) {
+			aetherTracer->entityManager->camera->moveRight(deltaTime);
+		}
+
+		if (keys[SDL_SCANCODE_SPACE]) {
+			aetherTracer->entityManager->camera->moveUp(deltaTime);
+		}
+
+		if (keys[SDL_SCANCODE_LCTRL]) {
+			aetherTracer->entityManager->camera->moveDown(deltaTime);
+		}
+
 	}
 
 	if (lockMouse) {

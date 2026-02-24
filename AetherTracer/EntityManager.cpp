@@ -26,9 +26,10 @@ void EntityManager::initScene() {
 
     entitys.emplace_back(new Entity{ "cube", {22, 1, -1}, {0, 0.4, 0}, {1, 1, 1}, materialManager->materials["White Plastic"], "Cornell Box Cube" });
     
-    entitys.emplace_back(new Entity{ "floor", {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, materialManager->materials["White Plastic"], "Cornell Box Floor" }); // floor
     //   CORNELL BOX
     
+    entitys.emplace_back(new Entity{ "floor", {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, materialManager->materials["White Plastic"], "Floor" }); // floor
+
     entitys.emplace_back(new Entity{ "sphere", {15, 1, -5}, {0, 0.4, 0}, {1, 1, 1}, materialManager->materials["Glass"], "Sphere" });
     entitys.emplace_back(new Entity{ "sphere", {15, 1, -10}, {0, 0.4, 0}, {1, 1, 1}, materialManager->materials["Mirror"], "Sphere" });
     entitys.emplace_back(new Entity{ "diamondFlat", {10, 0, -7.5}, {0, 0, 0}, {1, 1, 1}, materialManager->materials["Diamond"], "Diamond" });

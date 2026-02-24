@@ -37,6 +37,9 @@ public:
 	static std::vector<const char*> entities;
 	static int entitySelection;
 
+	static int renaming_index;
+	static char renaming_buffer[128];
+
 	static PT::Vector3 position;
 	static PT::Vector3 rotation;
 	static PT::Vector3 scale;

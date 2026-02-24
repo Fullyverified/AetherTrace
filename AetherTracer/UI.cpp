@@ -87,6 +87,8 @@ std::vector<const char*> UI::models;
 int UI::meshSelection = 0;
 std::vector<const char*> UI::entities;
 int UI::entitySelection = 0;
+int UI::renaming_index = -1;
+char UI::renaming_buffer[128] = "";
 
 PT::Vector3 UI::position = {};
 PT::Vector3 UI::rotation = {};
@@ -119,7 +121,51 @@ void UI::sceneEditor() {
 
     // Drop down to select an Entity
 
-    ImGui::Combo("##Entities", &entitySelection, UI::entities.data(), static_cast<int>(UI::entities.size()));
+    if (ImGui::BeginListBox("##Entities", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 12))) {
+        for (int i = 0; i < UI::entities.size(); i++) {
+            ImGui::PushID(i);
+
+            const bool is_selected = (entitySelection == i);
+
+            if (ImGui::Selectable(UI::entities[i], is_selected)) {
+
+                entitySelection = i;
+                //renaming_index = -1;
+
+            }
+                
+            // double click
+            if (is_selected && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                renaming_index = i;
+
+                strncpy_s(renaming_buffer, UI::entities[i], sizeof(renaming_buffer) - 1);
+            }
+
+            if (renaming_index == i) {
+            
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                
+                if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+
+                if (ImGui::InputText("##Rename", renaming_buffer, sizeof(renaming_buffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)) {
+
+                    entityManager->entitys[i]->name = renaming_buffer;
+                    updateUIEntities();
+
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused()) {
+                        renaming_index = -1;  // exit rename mode
+
+                    }
+
+                }
+                
+            }
+
+            ImGui::PopID();
+        }
+        ImGui::EndListBox();
+    }
+
 
     ImGui::Text("Translation: ");
     position = entityManager->entitys[entitySelection]->position;
