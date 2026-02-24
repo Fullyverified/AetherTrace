@@ -499,9 +499,12 @@ void DX12Renderer::bindDescriptors() {
 
 void DX12Renderer::render() {
 
-	rm->frames = ((config.accumulate & !entityManager->camera->camMoved) || UI::accumulationUpdate || UI::accelUpdate) ? rm->frames + 1 : 1;
+	rm->frames = (config.accumulate && !entityManager->camera->camMoved && !UI::accumulationUpdate && !UI::accelUpdate) ? rm->frames + 1 : 1;
 	rm->samples = rm->frames * config.raysPerPixel;
+	UI::numRays = rm->samples;
 	rm->seed++;
+
+
 
 	bindDescriptors();
 
@@ -530,7 +533,6 @@ void DX12Renderer::traceRays() {
 
 		rm->cmdList->ClearUnorderedAccessViewFloat(gpuHandle, cpuHandle, rm->accumulationTexture->default_buffer, rm->clearColor, 0, nullptr);
 
-		UI::numRays = config.raysPerPixel;
 		UI::accelUpdate = false;
 		UI::accumulationUpdate = false;
 	}

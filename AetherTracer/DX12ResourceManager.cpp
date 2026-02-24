@@ -786,6 +786,7 @@ void DX12ResourceManager::updateToneParams() {
 	}
 
 	toneMappingParams->num_samples = samples;
+	toneMappingParams->white_point = config.whitepoint;
 
 	if (!toneMappingConstantBuffer) {
 

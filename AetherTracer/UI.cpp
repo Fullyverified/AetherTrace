@@ -57,17 +57,24 @@ void UI::renderSettings() {
     }
 
     if (ImGui::Checkbox("Sky", &config.sky)) {
+        accumulationUpdate = true;
     }
 
     if (ImGui::Checkbox("Jitter", &config.jitter)) {
+        accumulationUpdate = true;
     }
 
     // Drop down list of materials
 
     const char* tone_mappers[] = { "Reinhard Extended", "Hable Filmic", "Aces Filmic" };
 
-    ImGui::Text("Tone Mapper:");
+    ImGui::Text("Tone Mapping: ");
     ImGui::SameLine();
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+    if (ImGui::DragFloat("##White Point", &config.whitepoint, 0.1f, 0.0f, 0.0f, "White Point: %.3f"))
+
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     if (ImGui::Combo("##Tone Mapping", &current_tone_mapper, tone_mappers, static_cast<int>(Tone_Mapper::Count))) {
         config.tone_mapper = static_cast<Tone_Mapper>(current_tone_mapper);
