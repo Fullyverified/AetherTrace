@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include "Config.h"
 
 class UI {
 public:
@@ -17,5 +18,7 @@ public:
 	
 	static uint64_t raysPerSecond;
 	static uint32_t numRays;
+
+	static int current_tone_mapper;
 };
 

@@ -1,6 +1,5 @@
 #include "UI.h"
 #include "Imgui.h"
-#include "Config.h"
 
 #include <sstream>
 #include <iomanip>  // For std::fixed and std::setprecision
@@ -13,6 +12,8 @@ bool UI::renderUI = true;
 uint64_t UI::raysPerSecond = 0;
 float UI::frameTime = 0;
 uint32_t UI::numRays = 0;
+
+int UI::current_tone_mapper = static_cast<int>(config.tone_mapper);
 
 void UI::renderSettings() {
 
@@ -56,13 +57,21 @@ void UI::renderSettings() {
     }
 
     if (ImGui::Checkbox("Sky", &config.sky)) {
-        accumulationUpdate = true;
     }
 
     if (ImGui::Checkbox("Jitter", &config.jitter)) {
-        accumulationUpdate = true;
     }
 
+    // Drop down list of materials
+
+    const char* tone_mappers[] = { "Reinhard Extended", "Hable Filmic", "Aces Filmic" };
+
+    ImGui::Text("Tone Mapper:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+    if (ImGui::Combo("##Tone Mapping", &current_tone_mapper, tone_mappers, static_cast<int>(Tone_Mapper::Count))) {
+        config.tone_mapper = static_cast<Tone_Mapper>(current_tone_mapper);
+    }
 
     ImGui::End();
 

@@ -2,6 +2,13 @@
 
 #include <cstdint>
 
+enum Tone_Mapper {
+    reinhard_extended,
+    hable_filmic,
+    aces_filmic,
+    Count
+};
+
 struct Config {
 
     // initial state
@@ -26,7 +33,9 @@ struct Config {
     float apertureRadius = 0.05f;
     float focalDistance = 15.0f;
  
-    float exposure = 1;
+    Tone_Mapper tone_mapper = reinhard_extended;
+
+    float whitepoint = 15.0f;
     bool sky = false;
     float skyBrightness = 1.0f;
 

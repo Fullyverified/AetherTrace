@@ -495,6 +495,24 @@ void DX12Renderer::bindDescriptors() {
 
 }
 
+// command submission
+
+void DX12Renderer::render() {
+
+	rm->frames = ((config.accumulate & !entityManager->camera->camMoved) || UI::accumulationUpdate || UI::accelUpdate) ? rm->frames + 1 : 1;
+	rm->samples = rm->frames * config.raysPerPixel;
+	rm->seed++;
+
+	bindDescriptors();
+
+	rm->updateCamera();
+	traceRays();
+	postProcess();
+
+	ImGui::Render();
+
+}
+
 void DX12Renderer::traceRays() {
 
 	rm->cmdList->SetPipelineState1(rm->raytracingPSO);
@@ -566,7 +584,10 @@ void DX12Renderer::postProcess() {
 
 	rm->cmdList->Dispatch(groupsX, groupsY, 1);
 
-	rm->toneMappingParams->stage = 1; // tone Map
+	 // tone Map
+	if (config.tone_mapper == reinhard_extended) rm->toneMappingParams->stage = 1;
+	if (config.tone_mapper == hable_filmic) rm->toneMappingParams->stage = 2;
+	if (config.tone_mapper == aces_filmic) rm->toneMappingParams->stage = 3;
 	rm->updateToneParams();
 
 	rm->cmdList->Dispatch(groupsX, groupsY, 1);
@@ -578,24 +599,6 @@ void DX12Renderer::postProcess() {
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 	rm->cmdList->ResourceBarrier(1, &barrier);
-
-}
-
-// command submission
-
-void DX12Renderer::render() {
-
-	rm->frames = (config.accumulate & !entityManager->camera->camMoved) ? rm->frames + 1 : 1;
-	rm->samples = rm->frames * config.raysPerPixel;
-	rm->seed++;
-
-	bindDescriptors();
-
-	rm->updateCamera();
-	traceRays();
-	postProcess();
-
-	ImGui::Render();
 
 }
 

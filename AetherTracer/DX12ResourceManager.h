@@ -171,9 +171,9 @@ public:
 	ResourceHandle* renderTarget;
 
 	struct alignas(256)ToneMappingParams {
-		ToneMappingParams() : stage(0), num_samples(1), exposure(1.0f) {};
+		ToneMappingParams() : stage(0), num_samples(1), white_point(config.whitepoint) {};
 		UINT stage;
-		float exposure;
+		float white_point;
 		UINT num_samples;
 	};
 	ToneMappingParams* toneMappingParams;
