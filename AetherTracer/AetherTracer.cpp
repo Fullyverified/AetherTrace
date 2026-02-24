@@ -69,6 +69,7 @@ void AetherTracer::renderImgui() {
 	
 	if (UI::renderUI) {
 		UI::renderSettings();
+		UI::sceneEditor();
 	}
 }
 
@@ -84,9 +85,14 @@ void AetherTracer::init() {
 	materialManager->initDefaultMaterials();
 	entityManager->initScene();
 
-
 	dx12Renderer = new DX12Renderer{ entityManager, meshManager, materialManager, window };
 
 	dx12Renderer->init();
+
+	UI::meshManager = meshManager;
+	UI::entityManager = entityManager;
 	UI::numRays = 0;
+	UI::updateUIModels();
+	UI::updateUIEntities();
+
 }

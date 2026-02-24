@@ -77,6 +77,9 @@ public:
 
 	void initGlobalDescriptors();
 
+	void rebuildBLAS();
+	void updateTLAS();
+
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
 	void waitForGPU();

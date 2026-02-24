@@ -55,15 +55,13 @@ void DX12Renderer::init() {
 	std::cout << "init RTResources" << std::endl;
 	rm->updateCamera();
 	rm->initAccumulationTexture(rm->accumulationTexture, "Accumulation Texture");
-	rm->initModelBuffers();
 
-	rm->initModelBLAS();
-
+	rm->initModelBuffers(); // instanced vertex and index buffers
+	rm->initModelBLAS(); // instanced model blas
 	rm->initScene();
 	rm->initTopLevelAS();
 	rm->initMaterialBuffer();
 	rm->initVertexIndexBuffers();
-	rm->updateTransforms();
 
 	rm->initRenderTarget(rm->renderTarget, "Render Target");
 	rm->updateRand();
@@ -504,7 +502,7 @@ void DX12Renderer::render() {
 	UI::numRays = rm->samples;
 	rm->seed++;
 
-
+	if (UI::accelUpdate) rm->updateTLAS();
 
 	bindDescriptors();
 

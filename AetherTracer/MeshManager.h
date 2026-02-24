@@ -68,13 +68,14 @@ public:
 		std::vector<Mesh> meshes;
 	};
 
-
 	void initMeshes();
 
 	void loadFromObject(const std::string& fileName, bool forceOpaque = false, bool computeNormalsIfMissing = false);
 
 	void cleanUp();
 	
+	std::vector<std::string> models;
+
 	std::unordered_map<std::string, MeshManager::LoadedModel*> loadedModels;
 
 	std::unordered_set<std::string> uniqueModels;

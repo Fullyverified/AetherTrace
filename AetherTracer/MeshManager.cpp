@@ -12,8 +12,8 @@
 
 void MeshManager::initMeshes() { 
 
-    //std::vector<std::string> models = { "weirdTriangle", "cube", "sphere", "cornell" };
-    std::vector<std::string> models = { "weirdTriangle", "cube", "sphere", "cornell", "TheStanfordDragon", "lucyScaled", "diamondFlat", "diamond", "portalGun", "portalButton", "CompanionCube", "floor"};
+    models = { "weirdTriangle", "cube", "sphere", "cornell" };
+    models = { "weirdTriangle", "cube", "sphere", "cornell", "TheStanfordDragon", "lucyScaled", "diamondFlat", "diamond", "portalGun", "portalButton", "CompanionCube", "floor"};
 
     for (std::string name : models) {
         loadFromObject(name, false, false);

@@ -14,13 +14,17 @@ public:
 	struct Entity {
 
 
-		Entity(std::string name) : name(name), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{1.0f, 1.0f, 1.0f}, material(nullptr) {};
+		Entity(std::string model) : model(model), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material(nullptr), name("Entity") {};
 
-		Entity(std::string name, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale) : name(name), position(position), rotation(rotation), scale(scale), material(nullptr) {};
+		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale) : model(model), position(position), rotation(rotation), scale(scale), material(nullptr), name("Entity") {};
 
-		Entity(std::string name, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, MaterialManager::Material* material) : name(name), position(position), rotation(rotation), scale(scale), material(material) {};
+		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, MaterialManager::Material* material) : model(model), position(position), rotation(rotation), scale(scale), material(material), name("Entity") {};
 
-		std::string name; // name in assets folder
+		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, MaterialManager::Material* material, std::string name) : model(model), position(position), rotation(rotation), scale(scale), material(material), name(name) {};
+
+
+		std::string model; // name in assets folder
+		std::string name;
 		PT::Vector3 position;
 		PT::Vector3 rotation;
 		PT::Vector3 scale;
@@ -110,6 +114,7 @@ public:
 
 	void cleanUp();
 
+	void addEntity(std::string meshName, std::string entityName);
 
 	std::vector<Entity*> entitys;
 	MaterialManager* materialManager;

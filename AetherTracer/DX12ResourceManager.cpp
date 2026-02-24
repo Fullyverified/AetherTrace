@@ -464,13 +464,14 @@ void DX12ResourceManager::initScene() {
 	if (config.debug) std::cout << "initScene()" << std::endl;
 
 	materials.clear();
+	dx12Entitys.clear();
 
 	for (size_t i = 0; i < entityManager->entitys.size(); i++) {
 
 		EntityManager::Entity* entity = entityManager->entitys[i];
 		DX12ResourceManager::DX12Entity* dx12Entity = new DX12ResourceManager::DX12Entity{};
 		dx12Entity->entity = entity;
-		dx12Entity->model = dx12Models[entity->name];
+		dx12Entity->model = dx12Models[entity->model];
 
 		std::cout << "Material name: " << entity->material->name << std::endl;
 
@@ -498,7 +499,7 @@ void DX12ResourceManager::initScene() {
 
 	D3D12_RESOURCE_DESC instancesDesc{};
 	instancesDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	instancesDesc.Width = sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * NUM_INSTANCES;
+	instancesDesc.Width = sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * config.maxInstances;
 	instancesDesc.Height = 1;
 	instancesDesc.DepthOrArraySize = 1;
 	instancesDesc.MipLevels = 1;
@@ -521,14 +522,13 @@ void DX12ResourceManager::initScene() {
 		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
 
 		DX12ResourceManager::ResourceHandle* objectBlas = dx12Entity->model->BLAS;
-		objectBlas->default_buffer->GetGPUVirtualAddress();
 
-		if (uniqueInstancesID.find(dx12Entity->entity->name) == uniqueInstancesID.end()) {
+		if (uniqueInstancesID.find(dx12Entity->entity->model) == uniqueInstancesID.end()) {
 			instanceID++;
-			uniqueInstancesID[dx12Entity->entity->name] = instanceID;
+			uniqueInstancesID[dx12Entity->entity->model] = instanceID;
 		}
 		else {
-			instanceID = uniqueInstancesID[dx12Entity->entity->name];
+			instanceID = uniqueInstancesID[dx12Entity->entity->model];
 		}
 
 		std::cout << "InstanceIndex: " << instanceIndex << std::endl;
@@ -545,8 +545,24 @@ void DX12ResourceManager::initScene() {
 		instanceIndex++;
 	}
 
-	updateTransforms();
+	// fill in dummy instances
+	// to allow easily rebuildable BLAS
 
+	DX12Model* dummyModel = dx12Models["cube"];
+
+	for (UINT i = dx12Entitys.size() - 1; i < config.maxInstances; i++) {
+		
+		instanceData[instanceIndex] = {
+			.InstanceID = static_cast<UINT>(instanceID),
+			.InstanceMask = 0,
+			.InstanceContributionToHitGroupIndex = 0,
+			.Flags = 0,
+			.AccelerationStructure = dummyModel->BLAS->default_buffer->GetGPUVirtualAddress(),
+		};
+	
+	}
+
+	updateTransforms();
 }
 
 void DX12ResourceManager::updateTransforms() {
@@ -596,7 +612,7 @@ void DX12ResourceManager::initMaterialBuffer() {
 
 	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
 
-		std::cout << "Entity Name: " << dx12Entity->entity->name << std::endl;
+		std::cout << "Entity Name: " << dx12Entity->entity->model << std::endl;
 
 		DX12ResourceManager::DX12Material* dx12Mateiral = dx12Entity->material;
 		std::cout << "Material name: " << dx12Entity->entity->material->name << std::endl;
@@ -647,15 +663,15 @@ void DX12ResourceManager::initTopLevelAS() {
 	
 	if (config.debug) std::cout << "initTopLevel()" << std::endl;
 
-	UINT64 updateScratchSize;
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {
 	.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
 	.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE,
-	.NumDescs = NUM_INSTANCES,
+	.NumDescs = config.maxInstances,
 	.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
 	.InstanceDescs = instances->default_buffer->GetGPUVirtualAddress() };
 
 	std::cout << "NUM_INSTANCES = " << NUM_INSTANCES << std::endl;
+	std::cout << "MAX_INSTANCES = " << config.maxInstances << std::endl;
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
 	d3dDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfo);
@@ -710,9 +726,9 @@ void DX12ResourceManager::initVertexIndexBuffers() {
 	for (DX12ResourceManager::DX12Entity* dx12SceneObject : dx12Entitys) {
 
 
-		if (uniqueInstances.count(dx12SceneObject->entity->name) == 0) {
+		if (uniqueInstances.count(dx12SceneObject->entity->model) == 0) {
 
-			uniqueInstances.insert(dx12SceneObject->entity->name);
+			uniqueInstances.insert(dx12SceneObject->entity->model);
 			std::vector<DX12ResourceManager::ResourceHandle*> indexBuffers = dx12SceneObject->model->indexBuffers;
 			std::vector<DX12ResourceManager::ResourceHandle*> vertexBuffers = dx12SceneObject->model->vertexBuffers;
 
@@ -803,6 +819,91 @@ void DX12ResourceManager::updateToneParams() {
 
 }
 
+void DX12ResourceManager::rebuildBLAS() {
+
+	initModelBuffers(); // only if a new unique model is added
+	initModelBLAS(); // only if a new unique model is added
+
+	initScene(); // only if a new entity is added
+
+}
+
+void DX12ResourceManager::updateTLAS() {
+
+	if (entityManager->entitys.size() > config.maxInstances) {
+		std::cout << "Too many entities" << std::endl;
+		// Completely rebuild TLAS
+	}
+	
+	initScene();
+
+	// Update exisitng TLAS
+
+	updateTransforms();
+
+	tlas_scratch = new ResourceHandle{};
+
+	if (config.debug) std::cout << "initTopLevel()" << std::endl;
+
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {
+	.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+	.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE, // perform update
+	.NumDescs = config.maxInstances,
+	.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+	.InstanceDescs = instances->default_buffer->GetGPUVirtualAddress() };
+
+	std::cout << "NUM_INSTANCES = " << NUM_INSTANCES << std::endl;
+	std::cout << "MAX_INSTANCES = " << config.maxInstances << std::endl;
+
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
+	d3dDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfo);
+
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Width = prebuildInfo.UpdateScratchDataSizeInBytes; // update scratch size
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.SampleDesc = NO_AA;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	HRESULT hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&tlas_scratch->default_buffer));
+	checkHR(hr, nullptr, "CreateCommittedResource for TLAS failed");
+
+	desc.Width = prebuildInfo.ResultDataMaxSizeInBytes;
+
+	if (tlas_scratch->default_buffer == nullptr) std::cout << "scratch nullptr" << std::endl;
+	if (tlas->default_buffer == nullptr) std::cout << "TLAS nullptr" << std::endl;
+
+	tlas_scratch->default_buffer->SetName(L"Scratch");
+
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC updateDesc = {};
+	updateDesc.DestAccelerationStructureData = tlas->default_buffer->GetGPUVirtualAddress();
+	updateDesc.SourceAccelerationStructureData = tlas->default_buffer->GetGPUVirtualAddress(); // update, not rebuild
+	updateDesc.Inputs = inputs;
+	updateDesc.ScratchAccelerationStructureData = tlas_scratch->default_buffer->GetGPUVirtualAddress();
+
+	std::cout << "executing cmd list " << std::endl;
+
+	cmdList->BuildRaytracingAccelerationStructure(&updateDesc, 0, nullptr);
+
+	D3D12_RESOURCE_BARRIER uavBarrier = {};
+	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+	uavBarrier.UAV.pResource = tlas->default_buffer;
+	cmdList->ResourceBarrier(1, &uavBarrier);
+
+	cmdList->Close();
+	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
+	waitForGPU();
+	cmdAlloc->Reset();
+	cmdList->Reset(cmdAlloc, nullptr);
+
+	tlas_scratch->default_buffer->Release();
+	delete tlas_scratch;
+
+}
+
 // utility
 
 void DX12ResourceManager::initRenderTarget(ResourceHandle* resource_handle, std::string resource_name) {
@@ -865,14 +966,7 @@ DX12ResourceManager::ResourceHandle* DX12ResourceManager::createResourceHandle(c
 
 
 	ID3D12Resource* upload;
-	d3dDevice->CreateCommittedResource(
-		&UPLOAD_HEAP,
-		D3D12_HEAP_FLAG_NONE,
-		&DESC,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&upload)
-	);
+	d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload));
 
 	void* mapped;
 	upload->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
@@ -889,14 +983,7 @@ DX12ResourceManager::ResourceHandle* DX12ResourceManager::createResourceHandle(c
 		DESC.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
 	ID3D12Resource* target = nullptr;
-	d3dDevice->CreateCommittedResource(
-		&DEFAULT_HEAP,
-		D3D12_HEAP_FLAG_NONE,
-		&DESC,
-		finalState,
-		nullptr,
-		IID_PPV_ARGS(&target)
-	);
+	d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, finalState, nullptr, IID_PPV_ARGS(&target));
 
 	DX12ResourceManager::ResourceHandle* resource_handle = new DX12ResourceManager::ResourceHandle();
 	resource_handle->upload_buffer = upload;

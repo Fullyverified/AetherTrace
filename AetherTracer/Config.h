@@ -27,17 +27,20 @@ struct Config {
     bool accumulate = true;
     bool jitter = true;
 
-    // other
+    // Camera
     float fOV = 45;
     bool DepthOfField = false;
     float apertureRadius = 0.05f;
     float focalDistance = 15.0f;
  
+    // Tone mapping
     Tone_Mapper tone_mapper = reinhard_extended;
-
     float whitepoint = 15.0f;
     bool sky = false;
     float skyBrightness = 1.0f;
+
+    // Acceleration Structure
+    uint32_t maxInstances = 512;
 
     float mouseSensitivity = 0.1f;
     float sensitivity = 5.0f;
