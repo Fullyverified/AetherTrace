@@ -42,40 +42,38 @@ void InputManager::processInput(SDL_Event& event) {
 
 void InputManager::processInputContinuous(SDL_Event& event, float deltaTime) {
 
-	const auto& io = ImGui::GetIO();
 
 	// Continuous Input
-	SDL_GetRelativeMouseState(&mouseX, &mouseY);
+	uint32_t mouseButtons = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
 	PT::Vector2 mousePos = { event.button.x, event.button.y };
 
-	if (!io.WantCaptureKeyboard) {
 
-		if (keys[SDL_SCANCODE_W]) {
-			aetherTracer->entityManager->camera->moveForward(deltaTime);
-		}
-
-		if (keys[SDL_SCANCODE_A]) {
-			aetherTracer->entityManager->camera->moveLeft(deltaTime);
-		}
-
-		if (keys[SDL_SCANCODE_S]) {
-			aetherTracer->entityManager->camera->moveBack(deltaTime);
-		}
-
-		if (keys[SDL_SCANCODE_D]) {
-			aetherTracer->entityManager->camera->moveRight(deltaTime);
-		}
-
-		if (keys[SDL_SCANCODE_SPACE]) {
-			aetherTracer->entityManager->camera->moveUp(deltaTime);
-		}
-
-		if (keys[SDL_SCANCODE_LCTRL]) {
-			aetherTracer->entityManager->camera->moveDown(deltaTime);
-		}
-
+	if (keys[SDL_SCANCODE_W]) {
+		aetherTracer->entityManager->camera->moveForward(deltaTime);
 	}
+
+	if (keys[SDL_SCANCODE_A]) {
+		aetherTracer->entityManager->camera->moveLeft(deltaTime);
+	}
+
+	if (keys[SDL_SCANCODE_S]) {
+		aetherTracer->entityManager->camera->moveBack(deltaTime);
+	}
+
+	if (keys[SDL_SCANCODE_D]) {
+		aetherTracer->entityManager->camera->moveRight(deltaTime);
+	}
+
+	if (keys[SDL_SCANCODE_SPACE]) {
+		aetherTracer->entityManager->camera->moveUp(deltaTime);
+	}
+
+	if (keys[SDL_SCANCODE_LCTRL]) {
+		aetherTracer->entityManager->camera->moveDown(deltaTime);
+	}
+
+	
 
 	if (lockMouse) {
 
@@ -83,6 +81,19 @@ void InputManager::processInputContinuous(SDL_Event& event, float deltaTime) {
 			aetherTracer->entityManager->camera->updateDirection(mouseX, mouseY);
 		}
 
+	}
+
+	if (mouseButtons & SDL_BUTTON_RMASK) {
+		lockMouse = true;
+		aetherTracer->window->setRelativeMouse(aetherTracer->inputManager->lockMouse);
+
+		if (mouseX != 0 || mouseY != 0) {
+			aetherTracer->entityManager->camera->updateDirection(mouseX, mouseY);
+		}
+	}
+	else {
+		lockMouse = false;
+		aetherTracer->window->setRelativeMouse(aetherTracer->inputManager->lockMouse);
 	}
 
 }

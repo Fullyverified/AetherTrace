@@ -576,8 +576,8 @@ void DX12Renderer::postProcess() {
 
 	// start compute shader
 
-	UINT groupsX = (rm->renderTarget->default_buffer->GetDesc().Width + 15) / 16;
-	UINT groupsY = (rm->renderTarget->default_buffer->GetDesc().Height + 15) / 16;
+	UINT groupsX = static_cast<UINT>((rm->renderTarget->default_buffer->GetDesc().Width + 15) / 16);
+	UINT groupsY = static_cast<UINT>((rm->renderTarget->default_buffer->GetDesc().Height + 15) / 16);
 
 	rm->toneMappingParams->stage = 0; // max Luminance
 	rm->updateToneParams();

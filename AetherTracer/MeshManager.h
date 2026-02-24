@@ -78,9 +78,6 @@ public:
 
 	std::unordered_map<std::string, MeshManager::LoadedModel*> loadedModels;
 
-	std::unordered_set<std::string> uniqueModels;
-
-
 };	
 
 

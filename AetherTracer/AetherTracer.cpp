@@ -70,6 +70,7 @@ void AetherTracer::renderImgui() {
 	if (UI::renderUI) {
 		UI::renderSettings();
 		UI::sceneEditor();
+		UI::materialEditor();
 	}
 }
 
@@ -91,8 +92,10 @@ void AetherTracer::init() {
 
 	UI::meshManager = meshManager;
 	UI::entityManager = entityManager;
+	UI::materialManager = materialManager;
 	UI::numRays = 0;
 	UI::updateUIModels();
 	UI::updateUIEntities();
+	UI::updateUIMaterials();
 
 }

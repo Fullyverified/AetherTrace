@@ -1,15 +1,20 @@
 #include "UI.h"
 #include "Imgui.h"
 
+#include <string>
+
 #include "MeshManager.h"
 #include "EntityManager.h"
+#include "MaterialManager.h"
 
 MeshManager* UI::meshManager = nullptr;
 EntityManager* UI::entityManager = nullptr;
+MaterialManager* UI::materialManager = nullptr;
 
 bool UI::isWindowHovered = false;
 bool UI::accelUpdate = false; // reset by the renderer
 bool UI::accumulationUpdate = false; // reset by the renderer
+bool UI::materialUpdate = false;
 bool UI::renderUI = true;
 
 uint64_t UI::raysPerSecond = 0;
@@ -27,7 +32,7 @@ void UI::renderSettings() {
 
     ImGui::Begin("Render Settings", nullptr, ImGuiWindowFlags_None);
 
-    raysPerSecond = (config.resX * config.resY) * (1000.0f / frameTime);
+    raysPerSecond = static_cast<uint64_t>((config.resX * config.resY) * (1000.0f / frameTime));
     ImGui::Text("Rays /s: %u", raysPerSecond);
 
     std::string frameTimeStr = std::to_string(static_cast<uint64_t>(frameTime * 1000)) + " ms";
@@ -84,11 +89,11 @@ void UI::renderSettings() {
 }
 
 std::vector<const char*> UI::models;
-int UI::meshSelection = 0;
+int UI::mesh_selection_idx = 0;
 std::vector<const char*> UI::entities;
-int UI::entitySelection = 0;
-int UI::renaming_index = -1;
-char UI::renaming_buffer[128] = "";
+int UI::entity_selection_idx = 0;
+int UI::renaming_index_entity = -1;
+char UI::renaming_buffer_entity[128] = "";
 
 PT::Vector3 UI::position = {};
 PT::Vector3 UI::rotation = {};
@@ -105,76 +110,78 @@ void UI::sceneEditor() {
         accumulationUpdate = true;
     }
 
-    // Drop down to select a mesh Type
+    // Drop down to select an existant Entity
 
-    ImGui::Combo("##Mesh Objects", &meshSelection, UI::models.data(), static_cast<int>(UI::models.size()));
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Add Entity")) {
-
-        entityManager->addEntity(UI::models[meshSelection], "Test");
-        accumulationUpdate = true;
-        accelUpdate = true;
-    }
-
-
-    // Drop down to select an Entity
-
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::BeginListBox("##Entities", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 12))) {
         for (int i = 0; i < UI::entities.size(); i++) {
             ImGui::PushID(i);
 
-            const bool is_selected = (entitySelection == i);
+            const bool is_selected = (entity_selection_idx == i);
 
-            if (ImGui::Selectable(UI::entities[i], is_selected)) {
-
-                entitySelection = i;
-                //renaming_index = -1;
-
-            }
-                
-            // double click
-            if (is_selected && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                renaming_index = i;
-
-                strncpy_s(renaming_buffer, UI::entities[i], sizeof(renaming_buffer) - 1);
-            }
-
-            if (renaming_index == i) {
+            if (i != renaming_index_entity) {
             
-                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-                
-                if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+                if (ImGui::Selectable(UI::entities[i], is_selected)) {
 
-                if (ImGui::InputText("##Rename", renaming_buffer, sizeof(renaming_buffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)) {
+                    entity_selection_idx = i;
 
-                    entityManager->entitys[i]->name = renaming_buffer;
-                    updateUIEntities();
-
-                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused()) {
-                        renaming_index = -1;  // exit rename mode
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) { // not working
+                        renaming_index_entity = -1;  // exit rename mode
+                        ImGui::SetNextFrameWantCaptureKeyboard(false);
 
                     }
 
                 }
-                
+
+                // double click
+                if (is_selected && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    renaming_index_entity = i;
+
+                    strncpy_s(renaming_buffer_entity, UI::entities[i], sizeof(renaming_buffer_entity) - 1);
+                }
+            }
+
+            
+            if (renaming_index_entity == i) {
+
+                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+                 if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+
+                 if (ImGui::InputText("##Rename", renaming_buffer_entity, sizeof(renaming_buffer_entity), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)) {
+                     
+                     entityManager->entitys[i]->name = renaming_buffer_entity;
+                     updateUIEntities();
+
+
+                     if (ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused()) {
+                         renaming_index_entity = -1;  // exit rename mode
+                         ImGui::SetNextFrameWantCaptureKeyboard(false);
+
+                     }
+
+                 }
+
             }
 
             ImGui::PopID();
+
         }
         ImGui::EndListBox();
+
     }
 
 
+    // Position
+
     ImGui::Text("Translation: ");
-    position = entityManager->entitys[entitySelection]->position;
+    position = entityManager->entitys[entity_selection_idx]->position;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Position X", &position.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entitys[entitySelection]->position = position;
+        entityManager->entitys[entity_selection_idx]->position = position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -182,7 +189,7 @@ void UI::sceneEditor() {
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Position Y", &position.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entitys[entitySelection]->position = position;
+        entityManager->entitys[entity_selection_idx]->position = position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -190,19 +197,21 @@ void UI::sceneEditor() {
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Position Z", &position.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entitys[entitySelection]->position = position;
+        entityManager->entitys[entity_selection_idx]->position = position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
+    // Rotation
+
     ImGui::Text("Rotation: ");
-    rotation = entityManager->entitys[entitySelection]->rotation;
+    rotation = entityManager->entitys[entity_selection_idx]->rotation;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Rotation X", &rotation.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entitys[entitySelection]->rotation = rotation;
+        entityManager->entitys[entity_selection_idx]->rotation = rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -210,7 +219,7 @@ void UI::sceneEditor() {
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Rotation Y", &rotation.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entitys[entitySelection]->rotation = rotation;
+        entityManager->entitys[entity_selection_idx]->rotation = rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -218,19 +227,21 @@ void UI::sceneEditor() {
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##rotation Z", &rotation.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entitys[entitySelection]->rotation = rotation;
+        entityManager->entitys[entity_selection_idx]->rotation = rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
+    // Scale
+
     ImGui::Text("Scale: ");
-    scale = entityManager->entitys[entitySelection]->scale;
+    scale = entityManager->entitys[entity_selection_idx]->scale;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Scale X", &scale.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entitys[entitySelection]->scale = scale;
+        entityManager->entitys[entity_selection_idx]->scale = scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -238,7 +249,7 @@ void UI::sceneEditor() {
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Scale Y", &scale.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entitys[entitySelection]->scale = scale;
+        entityManager->entitys[entity_selection_idx]->scale = scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -246,12 +257,181 @@ void UI::sceneEditor() {
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Scale Z", &scale.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entitys[entitySelection]->scale = scale;
+        entityManager->entitys[entity_selection_idx]->scale = scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
  
     
+    // Drop down to select a mesh Type
+
+    ImGui::Combo("##Mesh Objects", &mesh_selection_idx, UI::models.data(), static_cast<int>(UI::models.size()));
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Add Entity")) {
+
+        entityManager->addEntity(UI::models[mesh_selection_idx], UI::models[mesh_selection_idx]);
+        updateUIEntities();
+        accumulationUpdate = true;
+        accelUpdate = true;
+    }
+
+    ImGui::End();
+}
+
+std::vector<const char*> UI::materials;
+int UI::material_selection_idx = 0;
+int UI::renaming_index_material = -1;
+char UI::renaming_buffer_material[128] = "";
+
+PT::Vector3 UI::color = {};
+float UI::roughness = 1.0f;
+float UI::metallic = 0.0f;
+float UI::IOR = 1.0f;
+float UI::transmission = 0.0f;
+float UI::emission = 0.0f;
+
+void UI::materialEditor() {
+
+    MaterialManager::Material* selected_material;
+
+    ImGui::SetNextWindowSize(ImVec2(350, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowBgAlpha(0.5f);
+
+    ImGui::Begin("Material Editor", nullptr, ImGuiWindowFlags_None);
+
+    // Drop down to select an Material
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::BeginListBox("##Materials", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 12))) {
+        for (int i = 0; i < UI::materials.size(); i++) {
+            ImGui::PushID(i);
+
+            const bool is_selected = (material_selection_idx == i);
+
+            if (i != renaming_index_material) {
+
+                if (ImGui::Selectable(UI::materials[i], is_selected)) {
+
+                    material_selection_idx = i;
+
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) { // not working
+                        renaming_index_material = -1;  // exit rename mode
+                        ImGui::SetNextFrameWantCaptureKeyboard(false);
+
+                    }
+
+                }
+
+                // double click
+                if (is_selected && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    renaming_index_material = i;
+
+                    strncpy_s(renaming_buffer_material, UI::materials[i], sizeof(renaming_buffer_material) - 1);
+                }
+            }
+
+
+            if (renaming_index_material == i) {
+
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+                if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+
+                if (ImGui::InputText("##Rename", renaming_buffer_material, sizeof(renaming_buffer_material), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)) {
+
+                    MaterialManager::Material* material = materialManager->materials[UI::materials[i]];
+                    materialManager->materials.erase(UI::materials[i]);
+
+                    material->name = renaming_buffer_material;
+                    materialManager->materials[renaming_buffer_material] = material;
+
+                    updateUIMaterials();
+
+
+                    if (ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused()) {
+                        renaming_index_material = -1;  // exit rename mode
+                        ImGui::SetNextFrameWantCaptureKeyboard(false);
+
+                    }
+
+                }
+
+            }
+
+            ImGui::PopID();
+
+        }
+        ImGui::EndListBox();
+
+    }
+
+
+    if (material_selection_idx != -1) {
+    
+        selected_material = materialManager->materials[materials[material_selection_idx]];
+
+        if (selected_material != nullptr) {
+        
+            color = selected_material->color;
+            roughness = selected_material->roughness;
+            metallic = selected_material->metallic;
+            IOR = selected_material->ior;
+            transmission = selected_material->transmission;
+            emission = selected_material->emission;
+        
+        
+        }
+
+        // General Material Editing
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (ImGui::SliderFloat("##Roughness", &roughness, 0.0f, 1.0f, "Roughness %.3f")) {
+            roughness = roughness > 1 ? 1 : roughness;
+            roughness = roughness < 0 ? 0 : roughness;
+            selected_material->roughness = roughness;
+            accumulationUpdate = true;
+            materialUpdate = true;
+        }
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (ImGui::SliderFloat("##Metallic", &metallic, 0.0f, 1.0f, "Metallic %.3f")) {
+            metallic = metallic > 1 ? 1 : metallic;
+            metallic = metallic < 0 ? 0 : metallic;
+            selected_material->metallic = metallic;
+            accumulationUpdate = true;
+            materialUpdate = true;
+        }
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (ImGui::SliderFloat("##IOR", &IOR, 1.0f, 10.0f, "IOR %.3f")) {
+            IOR = IOR < 1 ? 1 : IOR;
+            selected_material->ior = IOR;
+            accumulationUpdate = true;
+            materialUpdate = true;
+        }
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (ImGui::SliderFloat("##Transmission", &transmission, 0.0f, 1.0f, "Transmission %.3f")) {
+            transmission = transmission > 1 ? 1 : transmission;
+            transmission = transmission < 0 ? 0 : transmission;
+            selected_material->transmission = transmission;
+            accumulationUpdate = true;
+            materialUpdate = true;
+        }
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (ImGui::SliderFloat("##Emission", &emission, 0.0f, 20.0f, "Emission %.3f")) {
+            emission = emission < 0 ? 0 : emission;
+            selected_material->emission = emission;
+            accumulationUpdate = true;
+            materialUpdate = true;
+        }
+    
+    }
+
+
     ImGui::End();
 }
 
@@ -271,6 +451,18 @@ void UI::updateUIEntities() {
 
     for (size_t i = 0; i < entityManager->entitys.size(); i++) {
         UI::entities.push_back(entityManager->entitys[i]->name.c_str());
+    }
+
+}
+
+void UI::updateUIMaterials() {
+
+    UI::materials.clear();
+
+    for (auto& pair : materialManager->materials) {
+    
+        UI::materials.push_back(pair.first.c_str());
+
     }
 
 }

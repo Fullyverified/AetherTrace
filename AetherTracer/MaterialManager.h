@@ -78,7 +78,6 @@ public:
 	
 	}
 
-
 	std::unordered_map<std::string, Material*> materials;
 
 	// name -> relative path

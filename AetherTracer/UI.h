@@ -9,11 +9,14 @@
 
 
 class MeshManager;
+class MaterialManager;
 class EntityManager;
+
 
 class UI {
 public:
 
+	static bool materialUpdate;
 	static bool accelUpdate;
 	static bool accumulationUpdate;
 	static bool isWindowHovered;
@@ -33,18 +36,35 @@ public:
 	static void updateUIEntities();
 
 	static std::vector<const char*> models;
-	static int meshSelection;
+	static int mesh_selection_idx;
 	static std::vector<const char*> entities;
-	static int entitySelection;
+	static int entity_selection_idx;
 
-	static int renaming_index;
-	static char renaming_buffer[128];
+	static std::vector<const char*> materials;
+	static int material_selection_idx;
+
+	static int renaming_index_entity;
+	static char renaming_buffer_entity[128];
 
 	static PT::Vector3 position;
 	static PT::Vector3 rotation;
 	static PT::Vector3 scale;
 
+	static void materialEditor();
+	static void updateUIMaterials();
+
+	static int renaming_index_material;
+	static char renaming_buffer_material[128];
+
+	static PT::Vector3 color;
+	static float roughness;
+	static float metallic;
+	static float IOR;
+	static float transmission;
+	static float emission;
+
 	static MeshManager* meshManager;
 	static EntityManager* entityManager;
+	static MaterialManager* materialManager;
 };
 

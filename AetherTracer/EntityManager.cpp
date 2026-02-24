@@ -42,6 +42,8 @@ void EntityManager::initScene() {
     entitys.emplace_back(new Entity{ "CompanionCube", {-5, 0, -1.5}, {0, 0, 0}, {1, 1, 1}, materialManager->materials["White Plastic"], "Companion Cube" });
 
 
+    entitys.emplace_back(new Entity{ "cube", {0, 15, 0}, {0, 0, 0}, {1, 1, 1}, materialManager->materials["Light"], "Light center" }); // high
+
    
     for (Entity* entity : entitys) {
         if (entity->material == nullptr) entity->material = materialManager->materials["White Plastic"];
