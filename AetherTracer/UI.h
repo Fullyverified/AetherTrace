@@ -43,14 +43,19 @@ public:
 	static std::vector<const char*> materials;
 	static int material_selection_idx;
 
+	static int entity_material_idx;
+
 	static int renaming_index_entity;
 	static char renaming_buffer_entity[128];
 
 	static int deleting_index_entity;
 
-	static PT::Vector3 position;
-	static PT::Vector3 rotation;
-	static PT::Vector3 scale;
+	static PT::Vector3 camera_position;
+	static PT::Vector2 camera_rotation;
+
+	static PT::Vector3 entity_position;
+	static PT::Vector3 entity_rotation;
+	static PT::Vector3 entity_scale;
 
 	static void materialEditor();
 	static void updateUIMaterials();

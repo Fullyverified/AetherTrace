@@ -23,6 +23,9 @@ uint32_t UI::numRays = 0;
 
 int UI::current_tone_mapper = static_cast<int>(config.tone_mapper);
 
+PT::Vector3 UI::camera_position = {};
+PT::Vector2 UI::camera_rotation = {};
+
 void UI::renderSettings() {
 
     isWindowHovered = ImGui::GetIO().WantCaptureMouse ? true : false;
@@ -84,6 +87,56 @@ void UI::renderSettings() {
         config.tone_mapper = static_cast<Tone_Mapper>(current_tone_mapper);
     }
 
+    // Camera
+
+    // Position
+
+    ImGui::Text("Translation: ");
+    camera_position = entityManager->camera->position;
+
+    // X Axis
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::DragFloat("##Position X", &camera_position.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
+
+        entityManager->camera->position = camera_position;
+        accumulationUpdate = true;
+    }
+
+    // Y Axis
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::DragFloat("##Position Y", &camera_position.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
+        entityManager->camera->position = camera_position;
+        accumulationUpdate = true;
+        accelUpdate = true;
+    }
+
+    // Z Axis
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::DragFloat("##Position Z", &camera_position.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
+        entityManager->camera->position = camera_position;
+        accumulationUpdate = true;
+    }
+
+    // Rotation
+
+    ImGui::Text("Rotation: ");
+    camera_rotation = entityManager->camera->rotation;
+
+    // X Axis
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::DragFloat("##Rotation X", &camera_rotation.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
+
+        entityManager->camera->rotation = camera_rotation;
+        accumulationUpdate = true;
+    }
+
+    // Y Axis
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::DragFloat("##Rotation Y", &camera_rotation.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
+        entityManager->camera->rotation = camera_rotation;
+        accumulationUpdate = true;
+    }
+
     ImGui::End();
 
 }
@@ -96,10 +149,13 @@ int UI::renaming_index_entity = -1;
 int UI::deleting_index_entity = -1;
 char UI::renaming_buffer_entity[128] = "";
 
-PT::Vector3 UI::position = {};
-PT::Vector3 UI::rotation = {};
-PT::Vector3 UI::scale = {};
+PT::Vector3 UI::entity_position = {};
+PT::Vector3 UI::entity_rotation = {};
+PT::Vector3 UI::entity_scale = {};
 
+std::vector<const char*> UI::materials;
+int UI::material_selection_idx = 0;
+int UI::entity_material_idx = -1;
 
 void UI::sceneEditor() {
     ImGui::SetNextWindowSize(ImVec2(350, 400), ImGuiCond_FirstUseEver);
@@ -136,6 +192,14 @@ void UI::sceneEditor() {
                     renaming_index_entity = - 1;
                     deleting_index_entity = -1;
                     entity_selection_idx = i;
+
+                    for (size_t j = 0; j < UI::materials.size(); j++) {
+                    
+                        if (entityManager->entities[entity_selection_idx]->material->name == UI::materials[j]) {
+                            entity_material_idx = j;
+                        }
+
+                    }
 
                     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) { // not working
                         renaming_index_entity = -1;  // exit rename mode
@@ -221,32 +285,44 @@ void UI::sceneEditor() {
     }
 
 
+    // Change material
+
+    ImGui::Text("Entity Material: ");
+
+    ImGui::SameLine();
+
+    if (ImGui::Combo("##Materials", &entity_material_idx, UI::materials.data(), static_cast<int>(UI::materials.size()))) {
+
+        entityManager->entities[entity_selection_idx]->material = materialManager->materials[UI::materials[entity_material_idx]];
+
+    }
+
     // Position
 
     ImGui::Text("Translation: ");
-    position = entityManager->entities[entity_selection_idx]->position;
+    entity_position = entityManager->entities[entity_selection_idx]->position;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Position X", &position.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
+    if (ImGui::DragFloat("##Position X", &entity_position.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entities[entity_selection_idx]->position = position;
+        entityManager->entities[entity_selection_idx]->position = entity_position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Position Y", &position.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entities[entity_selection_idx]->position = position;
+    if (ImGui::DragFloat("##Position Y", &entity_position.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
+        entityManager->entities[entity_selection_idx]->position = entity_position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Position Z", &position.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entities[entity_selection_idx]->position = position;
+    if (ImGui::DragFloat("##Position Z", &entity_position.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
+        entityManager->entities[entity_selection_idx]->position = entity_position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -254,29 +330,29 @@ void UI::sceneEditor() {
     // Rotation
 
     ImGui::Text("Rotation: ");
-    rotation = entityManager->entities[entity_selection_idx]->rotation;
+    entity_rotation = entityManager->entities[entity_selection_idx]->rotation;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Rotation X", &rotation.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
+    if (ImGui::DragFloat("##Rotation X", &entity_rotation.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entities[entity_selection_idx]->rotation = rotation;
+        entityManager->entities[entity_selection_idx]->rotation = entity_rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Rotation Y", &rotation.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entities[entity_selection_idx]->rotation = rotation;
+    if (ImGui::DragFloat("##Rotation Y", &entity_rotation.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
+        entityManager->entities[entity_selection_idx]->rotation = entity_rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##rotation Z", &rotation.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entities[entity_selection_idx]->rotation = rotation;
+    if (ImGui::DragFloat("##rotation Z", &entity_rotation.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
+        entityManager->entities[entity_selection_idx]->rotation = entity_rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -284,29 +360,29 @@ void UI::sceneEditor() {
     // Scale
 
     ImGui::Text("Scale: ");
-    scale = entityManager->entities[entity_selection_idx]->scale;
+    entity_scale = entityManager->entities[entity_selection_idx]->scale;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Scale X", &scale.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
+    if (ImGui::DragFloat("##Scale X", &entity_scale.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entities[entity_selection_idx]->scale = scale;
+        entityManager->entities[entity_selection_idx]->scale = entity_scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Scale Y", &scale.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entities[entity_selection_idx]->scale = scale;
+    if (ImGui::DragFloat("##Scale Y", &entity_scale.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
+        entityManager->entities[entity_selection_idx]->scale = entity_scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
 
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::DragFloat("##Scale Z", &scale.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entities[entity_selection_idx]->scale = scale;
+    if (ImGui::DragFloat("##Scale Z", &entity_scale.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
+        entityManager->entities[entity_selection_idx]->scale = entity_scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -329,8 +405,6 @@ void UI::sceneEditor() {
     ImGui::End();
 }
 
-std::vector<const char*> UI::materials;
-int UI::material_selection_idx = 0;
 int UI::renaming_index_material = -1;
 char UI::renaming_buffer_material[128] = "";
 
@@ -367,6 +441,7 @@ void UI::materialEditor() {
                 if (ImGui::Selectable(UI::materials[i], is_selected)) {
 
                     material_selection_idx = i;
+                   
 
                     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) { // not working
                         renaming_index_material = -1;  // exit rename mode
