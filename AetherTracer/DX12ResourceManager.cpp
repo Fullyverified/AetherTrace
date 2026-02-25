@@ -473,19 +473,21 @@ void DX12ResourceManager::initScene() {
 		dx12Entity->entity = entity;
 		dx12Entity->model = dx12Models[entity->model];
 
-		std::cout << "Material name: " << entity->material->name << std::endl;
+		std::cout << "Material name: " << entity->material << std::endl;
+
+		
 
 		// create material if it doesn't already exist
-		if (materials.find(entity->material->name) == materials.end()) {
+		if (materials.find(entity->material) == materials.end()) {
 			std::cout << "Material doesnt exist " << std::endl;
 
-			DX12ResourceManager::DX12Material* dx12Material = new DX12ResourceManager::DX12Material{ entity->material };
-			materials[entity->material->name] = dx12Material;
+			DX12ResourceManager::DX12Material* dx12Material = new DX12ResourceManager::DX12Material{ materialManager->materials[entity->material] };
+			materials[entity->material] = dx12Material;
 			dx12Entity->material = dx12Material;
 		}
 		else {
 			std::cout << "Material exists " << std::endl;
-			dx12Entity->material = materials[entity->material->name];
+			dx12Entity->material = materials[entity->material];
 		}
 
 		dx12entities.push_back(dx12Entity);
@@ -619,17 +621,17 @@ void DX12ResourceManager::initMaterialBuffer(bool is_update) {
 		std::cout << "Entity Name: " << dx12Entity->entity->model << std::endl;
 
 		DX12ResourceManager::DX12Material* dx12Mateiral = dx12Entity->material;
-		std::cout << "Material name: " << dx12Entity->entity->material->name << std::endl;
+		std::cout << "Material name: " << dx12Entity->entity->material << std::endl;
 
-		if (uniqueInstancesID.find(dx12Entity->entity->material->name) == uniqueInstancesID.end()) {
+		if (uniqueInstancesID.find(dx12Entity->entity->material) == uniqueInstancesID.end()) {
 			instanceIndex = dx12Materials.size();
-			uniqueInstancesID[dx12Entity->entity->material->name] = instanceIndex;
+			uniqueInstancesID[dx12Entity->entity->material] = instanceIndex;
 			dx12Materials.push_back(*dx12Entity->material);
 			std::cout << "Not in map " << std::endl;
 			std::cout << "instanceIndex: " << instanceIndex << std::endl;
 		}
 		else {
-			instanceIndex = uniqueInstancesID[dx12Entity->entity->material->name];
+			instanceIndex = uniqueInstancesID[dx12Entity->entity->material];
 			std::cout << "In map " << std::endl;
 			std::cout << "instanceIndex: " << instanceIndex << std::endl;
 		}

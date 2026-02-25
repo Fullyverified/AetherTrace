@@ -503,7 +503,7 @@ void DX12Renderer::render() {
 	rm->seed++;
 
 	if (UI::accelUpdate) rm->updateTLAS();
-	if (UI::materialUpdate) rm->initMaterialBuffer(true);
+	//if (UI::materialUpdate) rm->initMaterialBuffer(true);
 
 
 	bindDescriptors();

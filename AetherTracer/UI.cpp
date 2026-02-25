@@ -195,7 +195,7 @@ void UI::sceneEditor() {
 
                     for (size_t j = 0; j < UI::materials.size(); j++) {
                     
-                        if (entityManager->entities[entity_selection_idx]->material->name == UI::materials[j]) {
+                        if (entityManager->entities[entity_selection_idx]->material == UI::materials[j]) {
                             entity_material_idx = j;
                         }
 
@@ -293,7 +293,7 @@ void UI::sceneEditor() {
 
     if (ImGui::Combo("##Materials", &entity_material_idx, UI::materials.data(), static_cast<int>(UI::materials.size()))) {
 
-        entityManager->entities[entity_selection_idx]->material = materialManager->materials[UI::materials[entity_material_idx]];
+        entityManager->entities[entity_selection_idx]->material = UI::materials[entity_material_idx];
 
     }
 
@@ -528,7 +528,7 @@ void UI::materialEditor() {
         // General Material Editing
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::SliderFloat("##Roughness", &roughness, 0.0f, 1.0f, "Roughness %.3f")) {
+        if (ImGui::DragFloat("##Roughness", &roughness, 0.05f, 0.0f, 1.0f, "Roughness %.3f")) {
             roughness = roughness > 1 ? 1 : roughness;
             roughness = roughness < 0 ? 0 : roughness;
             selected_material->roughness = roughness;
@@ -537,7 +537,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::SliderFloat("##Metallic", &metallic, 0.0f, 1.0f, "Metallic %.3f")) {
+        if (ImGui::DragFloat("##Metallic", &metallic, 0.05f, 0.0f, 1.0f, "Metallic %.3f")) {
             metallic = metallic > 1 ? 1 : metallic;
             metallic = metallic < 0 ? 0 : metallic;
             selected_material->metallic = metallic;
@@ -546,7 +546,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::SliderFloat("##IOR", &IOR, 1.0f, 10.0f, "IOR %.3f")) {
+        if (ImGui::DragFloat("##IOR", &IOR, 0.05f, 1.0f, 10.0f, "IOR %.3f")) {
             IOR = IOR < 1 ? 1 : IOR;
             selected_material->ior = IOR;
             accumulationUpdate = true;
@@ -554,7 +554,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::SliderFloat("##Transmission", &transmission, 0.0f, 1.0f, "Transmission %.3f")) {
+        if (ImGui::DragFloat("##Transmission", &transmission, 0.05f, 0.0f, 1.0f, "Transmission %.3f")) {
             transmission = transmission > 1 ? 1 : transmission;
             transmission = transmission < 0 ? 0 : transmission;
             selected_material->transmission = transmission;
@@ -563,11 +563,19 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::SliderFloat("##Emission", &emission, 0.0f, 20.0f, "Emission %.3f")) {
+        if (ImGui::DragFloat("##Emission", &emission, 0.05f, 0.0f, 20.0f, "Emission %.3f")) {
             emission = emission < 0 ? 0 : emission;
             selected_material->emission = emission;
             accumulationUpdate = true;
             materialUpdate = true;
+        }
+
+        if (ImGui::Button("New Material")) {
+            materialManager->createMaterial();
+            materialUpdate = true;
+            UI::updateUIMaterials();
+            material_selection_idx = UI::materials.size() - 1;
+
         }
     
     }

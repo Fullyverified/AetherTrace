@@ -4,6 +4,20 @@
 #include <fstream>
 #include <string>
 
+void MaterialManager::createMaterial() {
+
+    Material* new_material = new Material{};
+
+    new_material->name = "New Material";
+    new_material->color = { 1.0f, 1.0f, 1.0f };
+    new_material->roughness = 1.0f;
+    new_material->metallic = 0.0f;
+    new_material->ior = 0.0f;
+    new_material->transmission = 0.0f;
+
+    materials["New Material"] = new_material;
+}
+
 void MaterialManager::loadMaterials(std::string material_file_name) {
 
 
@@ -272,7 +286,10 @@ void MaterialManager::initDefaultMaterials() {
 
     loadMaterials("default_materials");
 
-    materials["Missing material"] = new Material{ "Missing Material", {0.88f, 0.2f, 0.92f}, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f };
+    if (materials.empty()) {
+        materials["Missing material"] = new Material{ "Missing Material", {0.88f, 0.2f, 0.92f}, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f };
+    }
+
 
     {
     //materials["White Plastic"] = new Material{ "White Plastic", {1.0f, 1.0f, 1.0f}, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f };

@@ -13,15 +13,15 @@ class EntityManager {
 public:
 	struct Entity {
 
-		Entity() : model("cube"), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material(nullptr), name("Entity") {};
+		Entity() : model("cube"), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material("Missing"), name("Entity") {};
 
-		Entity(std::string model) : model(model), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material(nullptr), name("Entity") {};
+		Entity(std::string model) : model(model), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material("Missing"), name("Entity") {};
 
-		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale) : model(model), position(position), rotation(rotation), scale(scale), material(nullptr), name("Entity") {};
+		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale) : model(model), position(position), rotation(rotation), scale(scale), material("Missing"), name("Entity") {};
 
-		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, MaterialManager::Material* material) : model(model), position(position), rotation(rotation), scale(scale), material(material), name("Entity") {};
+		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, std::string material) : model(model), position(position), rotation(rotation), scale(scale), material(material), name("Entity") {};
 
-		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, MaterialManager::Material* material, std::string name) : model(model), position(position), rotation(rotation), scale(scale), material(material), name(name) {};
+		Entity(std::string model, PT::Vector3 position, PT::Vector3 rotation, PT::Vector3 scale, std::string material, std::string name) : model(model), position(position), rotation(rotation), scale(scale), material(material), name(name) {};
 
 
 		std::string model; // name in assets folder
@@ -29,7 +29,8 @@ public:
 		PT::Vector3 position;
 		PT::Vector3 rotation;
 		PT::Vector3 scale;
-		MaterialManager::Material* material;
+		//MaterialManager::Material* material;
+		std::string material;
 	};
 
 	struct Camera {

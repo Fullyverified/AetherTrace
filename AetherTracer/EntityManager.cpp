@@ -52,7 +52,12 @@ void EntityManager::initScene() {
     loadScene("default_scene");
 
     for (Entity* entity : entities) {
-        if (entity->material == nullptr) entity->material = materialManager->materials["Missing material"];
+
+        if (materialManager->materials.find(entity->material) == materialManager->materials.end()) {
+
+            entity->material = "Missing material";
+        }
+
     }
 }
 
@@ -60,7 +65,7 @@ void EntityManager::addEntity(std::string meshName, std::string entityName) {
     
     std::cout << "Mesh Name" << meshName << std::endl;
 
-    entities.emplace_back(new Entity{ meshName, {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, materialManager->materials["White Plastic"], entityName});
+    entities.emplace_back(new Entity{ meshName, {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, "White Plastic", entityName});
 
 }
 
@@ -203,13 +208,14 @@ void EntityManager::loadScene(std::string scene_name) {
 
         // material
         ent_obj["material_name"].get_string().get(sv);
-
-        std::string material_string{ sv };
-        entity->material = materialManager->materials[material_string];
+        std::string material_name{ sv };
+        entity->material = materialManager->materials.find(material_name) == materialManager->materials.end() ? "Missing Material" : material_name;
 
         // entity name
         ent_obj["entity_name"].get_string().get(sv);
         entity->name = sv;
+
+        std::cout << "Entity Name" << entity->name << std::endl;
 
         entities.push_back(entity);
     }
@@ -304,7 +310,7 @@ void EntityManager::saveScene(std::string scene_name) {
         // material_name
         builder.escape_and_append_with_quotes("material_name");
         builder.append_colon();
-        builder.escape_and_append_with_quotes(entity->material->name);
+        builder.escape_and_append_with_quotes(entity->material);
         // comma
         builder.append_comma();
         // entity_name

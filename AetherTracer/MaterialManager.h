@@ -30,9 +30,7 @@ public:
 		cleanUp();
 	};
 
-	void createMaterial(Material* material, std::string name) {
-		materials[name] = material;
-	}
+	void createMaterial();
 
 	void loadMaterials(std::string material_file_name);
 
