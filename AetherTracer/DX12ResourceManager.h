@@ -157,7 +157,7 @@ public:
 	std::unordered_map<std::string, DX12Material*> materials;
 	std::unordered_map<std::string, DX12Model*> dx12Models;
 
-	std::vector<DX12Entity*> dx12Entitys;
+	std::vector<DX12Entity*> dx12entities;
 	DX12Camera* dx12Camera;
 
 	// TLAS

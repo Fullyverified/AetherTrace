@@ -90,7 +90,7 @@ void UI::renderSettings() {
 
 std::vector<const char*> UI::models;
 int UI::mesh_selection_idx = 0;
-std::vector<const char*> UI::entities;
+std::vector<const char*> UI::entity;
 int UI::entity_selection_idx = 0;
 int UI::renaming_index_entity = -1;
 char UI::renaming_buffer_entity[128] = "";
@@ -110,18 +110,26 @@ void UI::sceneEditor() {
         accumulationUpdate = true;
     }
 
+    ImGui::SameLine();
+
+    if (ImGui::Button("Save Level")) {
+    
+        entityManager->saveScene("default_scene");
+    
+    }
+
     // Drop down to select an existant Entity
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
-    if (ImGui::BeginListBox("##Entities", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 12))) {
-        for (int i = 0; i < UI::entities.size(); i++) {
+    if (ImGui::BeginListBox("##entity", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 12))) {
+        for (int i = 0; i < UI::entity.size(); i++) {
             ImGui::PushID(i);
 
             const bool is_selected = (entity_selection_idx == i);
 
             if (i != renaming_index_entity) {
             
-                if (ImGui::Selectable(UI::entities[i], is_selected)) {
+                if (ImGui::Selectable(UI::entity[i], is_selected)) {
 
                     entity_selection_idx = i;
 
@@ -137,7 +145,7 @@ void UI::sceneEditor() {
                 if (is_selected && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     renaming_index_entity = i;
 
-                    strncpy_s(renaming_buffer_entity, UI::entities[i], sizeof(renaming_buffer_entity) - 1);
+                    strncpy_s(renaming_buffer_entity, UI::entity[i], sizeof(renaming_buffer_entity) - 1);
                 }
             }
 
@@ -150,8 +158,8 @@ void UI::sceneEditor() {
 
                  if (ImGui::InputText("##Rename", renaming_buffer_entity, sizeof(renaming_buffer_entity), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)) {
                      
-                     entityManager->entitys[i]->name = renaming_buffer_entity;
-                     updateUIEntities();
+                     entityManager->entities[i]->name = renaming_buffer_entity;
+                     updateUIentity();
 
 
                      if (ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused()) {
@@ -175,13 +183,13 @@ void UI::sceneEditor() {
     // Position
 
     ImGui::Text("Translation: ");
-    position = entityManager->entitys[entity_selection_idx]->position;
+    position = entityManager->entities[entity_selection_idx]->position;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Position X", &position.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entitys[entity_selection_idx]->position = position;
+        entityManager->entities[entity_selection_idx]->position = position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -189,7 +197,7 @@ void UI::sceneEditor() {
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Position Y", &position.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entitys[entity_selection_idx]->position = position;
+        entityManager->entities[entity_selection_idx]->position = position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -197,7 +205,7 @@ void UI::sceneEditor() {
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Position Z", &position.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entitys[entity_selection_idx]->position = position;
+        entityManager->entities[entity_selection_idx]->position = position;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -205,13 +213,13 @@ void UI::sceneEditor() {
     // Rotation
 
     ImGui::Text("Rotation: ");
-    rotation = entityManager->entitys[entity_selection_idx]->rotation;
+    rotation = entityManager->entities[entity_selection_idx]->rotation;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Rotation X", &rotation.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entitys[entity_selection_idx]->rotation = rotation;
+        entityManager->entities[entity_selection_idx]->rotation = rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -219,7 +227,7 @@ void UI::sceneEditor() {
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Rotation Y", &rotation.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entitys[entity_selection_idx]->rotation = rotation;
+        entityManager->entities[entity_selection_idx]->rotation = rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -227,7 +235,7 @@ void UI::sceneEditor() {
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##rotation Z", &rotation.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entitys[entity_selection_idx]->rotation = rotation;
+        entityManager->entities[entity_selection_idx]->rotation = rotation;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -235,13 +243,13 @@ void UI::sceneEditor() {
     // Scale
 
     ImGui::Text("Scale: ");
-    scale = entityManager->entitys[entity_selection_idx]->scale;
+    scale = entityManager->entities[entity_selection_idx]->scale;
 
     // X Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Scale X", &scale.x, 0.1f, 0.0f, 0.0f, "X %.3f")) {
 
-        entityManager->entitys[entity_selection_idx]->scale = scale;
+        entityManager->entities[entity_selection_idx]->scale = scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -249,7 +257,7 @@ void UI::sceneEditor() {
     // Y Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Scale Y", &scale.y, 0.1f, 0.0f, 0.0f, "Y %.3f")) {
-        entityManager->entitys[entity_selection_idx]->scale = scale;
+        entityManager->entities[entity_selection_idx]->scale = scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -257,7 +265,7 @@ void UI::sceneEditor() {
     // Z Axis
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
     if (ImGui::DragFloat("##Scale Z", &scale.z, 0.1f, 0.0f, 0.0f, "Z %.3f")) {
-        entityManager->entitys[entity_selection_idx]->scale = scale;
+        entityManager->entities[entity_selection_idx]->scale = scale;
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -272,7 +280,7 @@ void UI::sceneEditor() {
     if (ImGui::Button("Add Entity")) {
 
         entityManager->addEntity(UI::models[mesh_selection_idx], UI::models[mesh_selection_idx]);
-        updateUIEntities();
+        updateUIentity();
         accumulationUpdate = true;
         accelUpdate = true;
     }
@@ -293,13 +301,16 @@ float UI::transmission = 0.0f;
 float UI::emission = 0.0f;
 
 void UI::materialEditor() {
-
     MaterialManager::Material* selected_material;
 
     ImGui::SetNextWindowSize(ImVec2(350, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(0.5f);
 
     ImGui::Begin("Material Editor", nullptr, ImGuiWindowFlags_None);
+
+    if (ImGui::Button("Save Materials")) {
+        materialManager->saveMaterials("default_materials");
+    }
 
     // Drop down to select an Material
 
@@ -459,12 +470,12 @@ void UI::updateUIModels() {
 
 }
 
-void UI::updateUIEntities() {
+void UI::updateUIentity() {
 
-    UI::entities.clear();
+    UI::entity.clear();
 
-    for (size_t i = 0; i < entityManager->entitys.size(); i++) {
-        UI::entities.push_back(entityManager->entitys[i]->name.c_str());
+    for (size_t i = 0; i < entityManager->entities.size(); i++) {
+        UI::entity.push_back(entityManager->entities[i]->name.c_str());
     }
 
 }

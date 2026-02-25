@@ -25,6 +25,9 @@
     <Filter Include="Header Files\Vulkan">
       <UniqueIdentifier>{9ccc54ac-4c14-4629-9e03-8d10970f926f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="simdjson">
+      <UniqueIdentifier>{ac7650b9-7fc4-4319-8f0e-71c310471cef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -56,6 +59,12 @@
     </ClCompile>
     <ClCompile Include="DX12ResourceManager.cpp">
       <Filter>Source Files\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\simdjson.cpp">
+      <Filter>simdjson</Filter>
+    </ClCompile>
+    <ClCompile Include="MaterialManager.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -94,6 +103,9 @@
     </ClInclude>
     <ClInclude Include="DX12ResourceManager.h">
       <Filter>Header Files\DX12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\simdjson.h">
+      <Filter>simdjson</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

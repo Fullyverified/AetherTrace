@@ -464,11 +464,11 @@ void DX12ResourceManager::initScene() {
 	if (config.debug) std::cout << "initScene()" << std::endl;
 
 	materials.clear();
-	dx12Entitys.clear();
+	dx12entities.clear();
 
-	for (size_t i = 0; i < entityManager->entitys.size(); i++) {
+	for (size_t i = 0; i < entityManager->entities.size(); i++) {
 
-		EntityManager::Entity* entity = entityManager->entitys[i];
+		EntityManager::Entity* entity = entityManager->entities[i];
 		DX12ResourceManager::DX12Entity* dx12Entity = new DX12ResourceManager::DX12Entity{};
 		dx12Entity->entity = entity;
 		dx12Entity->model = dx12Models[entity->model];
@@ -488,14 +488,14 @@ void DX12ResourceManager::initScene() {
 			dx12Entity->material = materials[entity->material->name];
 		}
 
-		dx12Entitys.push_back(dx12Entity);
+		dx12entities.push_back(dx12Entity);
 	}
 
 	if (config.debug) std::cout << "creating instances" << std::endl;
 
 	// create instances
 
-	NUM_INSTANCES = static_cast<UINT>(dx12Entitys.size());
+	NUM_INSTANCES = static_cast<UINT>(dx12entities.size());
 
 	D3D12_RESOURCE_DESC instancesDesc{};
 	instancesDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -517,7 +517,7 @@ void DX12ResourceManager::initScene() {
 	uint32_t instanceID = -1; // user provided
 	uint32_t instanceIndex = 0;
 
-	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12entities) {
 
 		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
 
@@ -553,7 +553,7 @@ void DX12ResourceManager::initScene() {
 
 	DX12Model* dummyModel = dx12Models["cube"];
 
-	for (UINT i = dx12Entitys.size(); i < config.maxInstances; i++) {
+	for (UINT i = dx12entities.size(); i < config.maxInstances; i++) {
 		
 		instanceData[instanceIndex] = {
 			.InstanceID = static_cast<UINT>(instanceID),
@@ -579,7 +579,7 @@ void DX12ResourceManager::updateTransforms() {
 
 	// apply meshes stored transform
 
-	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12entities) {
 
 		auto vecRotation = dx12Entity->entity->rotation;
 		auto vecPosition = dx12Entity->entity->position;
@@ -614,7 +614,7 @@ void DX12ResourceManager::initMaterialBuffer(bool is_update) {
 
 	uint32_t instanceIndex = -1;
 
-	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12entities) {
 
 		std::cout << "Entity Name: " << dx12Entity->entity->model << std::endl;
 
@@ -734,7 +734,7 @@ void DX12ResourceManager::initVertexIndexBuffers() {
 	allIndexBuffers.clear();
 
 	uniqueInstances.clear();
-	for (DX12ResourceManager::DX12Entity* dx12SceneObject : dx12Entitys) {
+	for (DX12ResourceManager::DX12Entity* dx12SceneObject : dx12entities) {
 
 
 		if (uniqueInstances.count(dx12SceneObject->entity->model) == 0) {
@@ -841,8 +841,8 @@ void DX12ResourceManager::rebuildBLAS() {
 
 void DX12ResourceManager::updateTLAS() {
 
-	if (entityManager->entitys.size() > config.maxInstances) {
-		std::cout << "Too many entities" << std::endl;
+	if (entityManager->entities.size() > config.maxInstances) {
+		std::cout << "Too many entity" << std::endl;
 		// Completely rebuild TLAS
 	}
 	

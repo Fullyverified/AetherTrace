@@ -95,7 +95,7 @@ void AetherTracer::init() {
 	UI::materialManager = materialManager;
 	UI::numRays = 0;
 	UI::updateUIModels();
-	UI::updateUIEntities();
+	UI::updateUIentity();
 	UI::updateUIMaterials();
 
 }

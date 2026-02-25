@@ -23,7 +23,7 @@ void MeshManager::initMeshes() {
 
 void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, bool computeNormalsIfMissing) {
 
-    std::cout << "starting load" << std::endl;
+    //std::cout << "starting load" << std::endl;
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -51,7 +51,7 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
 
     LoadedModel* model = new LoadedModel(fileName);
 
-    std::cout << "reading shapes" << std::endl;
+    //std::cout << "reading shapes" << std::endl;
 
     for (const auto& shape : shapes) {
     

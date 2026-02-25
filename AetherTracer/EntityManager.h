@@ -13,6 +13,7 @@ class EntityManager {
 public:
 	struct Entity {
 
+		Entity() : model("cube"), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material(nullptr), name("Entity") {};
 
 		Entity(std::string model) : model(model), position{ 0.0f, 0.0f, 0.0f }, rotation{ 0.0f, 0.0f, 0.0f }, scale{ 1.0f, 1.0f, 1.0f }, material(nullptr), name("Entity") {};
 
@@ -106,17 +107,23 @@ public:
 
 	};
 
+	
 	~EntityManager() {
 		cleanUp();
 	};
 
 	void initScene();
 
+	void loadScene(std::string scene_name);
+	void saveScene(std::string scene_name);
+	void deleteScene(std::string scene_name);
+
+
 	void cleanUp();
 
 	void addEntity(std::string meshName, std::string entityName);
 
-	std::vector<Entity*> entitys;
+	std::vector<Entity*> entities;
 	MaterialManager* materialManager;
 	Camera* camera;
 };

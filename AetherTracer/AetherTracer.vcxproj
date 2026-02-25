@@ -131,12 +131,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\..\Downloads\simdjson.cpp" />
     <ClCompile Include="AetherTracer.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="DX12Renderer.cpp" />
     <ClCompile Include="EntityManager.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MaterialManager.cpp" />
     <ClCompile Include="MeshManager.cpp" />
     <ClCompile Include="DX12ResourceManager.cpp" />
     <ClCompile Include="UI.cpp" />
@@ -146,6 +148,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\..\Downloads\simdjson.h" />
     <ClInclude Include="AetherTracer.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="DX12Renderer.h" />

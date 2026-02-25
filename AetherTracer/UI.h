@@ -33,11 +33,11 @@ public:
 
 	static void sceneEditor();
 	static void updateUIModels();
-	static void updateUIEntities();
+	static void updateUIentity();
 
 	static std::vector<const char*> models;
 	static int mesh_selection_idx;
-	static std::vector<const char*> entities;
+	static std::vector<const char*> entity;
 	static int entity_selection_idx;
 
 	static std::vector<const char*> materials;
