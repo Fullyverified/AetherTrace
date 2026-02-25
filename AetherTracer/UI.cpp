@@ -93,6 +93,7 @@ int UI::mesh_selection_idx = 0;
 std::vector<const char*> UI::entity;
 int UI::entity_selection_idx = 0;
 int UI::renaming_index_entity = -1;
+int UI::deleting_index_entity = -1;
 char UI::renaming_buffer_entity[128] = "";
 
 PT::Vector3 UI::position = {};
@@ -127,10 +128,13 @@ void UI::sceneEditor() {
 
             const bool is_selected = (entity_selection_idx == i);
 
-            if (i != renaming_index_entity) {
+
+            if (i != renaming_index_entity && i != deleting_index_entity) {
             
                 if (ImGui::Selectable(UI::entity[i], is_selected)) {
 
+                    renaming_index_entity = - 1;
+                    deleting_index_entity = -1;
                     entity_selection_idx = i;
 
                     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) { // not working
@@ -141,15 +145,32 @@ void UI::sceneEditor() {
 
                 }
 
-                // double click
+                
+            }
+
+            if (i != renaming_index_entity) {
+
+                // double click - renaming
                 if (is_selected && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+
                     renaming_index_entity = i;
+                    deleting_index_entity = -1;
 
                     strncpy_s(renaming_buffer_entity, UI::entity[i], sizeof(renaming_buffer_entity) - 1);
                 }
+
             }
 
-            
+            if (i != deleting_index_entity) {
+
+                // right click - deleting
+                if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                    deleting_index_entity = i;
+                    renaming_index_entity = -1;
+                }
+
+            }
+
             if (renaming_index_entity == i) {
 
                  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
@@ -162,13 +183,33 @@ void UI::sceneEditor() {
                      updateUIentity();
 
 
-                     if (ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused()) {
+                     if (ImGui::IsKeyPressed(ImGuiKey_Enter) || !ImGui::IsItemFocused() || ImGui::IsItemDeactivated()) {
                          renaming_index_entity = -1;  // exit rename mode
                          ImGui::SetNextFrameWantCaptureKeyboard(false);
-
                      }
 
                  }
+
+            }
+
+            if (deleting_index_entity == i) {
+
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+                if (ImGui::Button("Delete")) {
+
+                    entityManager->deleteEntity(i);
+                    updateUIentity();
+                    accumulationUpdate = true;
+                    accelUpdate = true;
+
+                    if (ImGui::IsItemDeactivated() || !ImGui::IsItemActive() || !ImGui::IsItemFocused() || !ImGui::IsAnyItemFocused()) {
+                        deleting_index_entity = -1;  // exit deleting mode
+                        ImGui::SetNextFrameWantCaptureKeyboard(false);
+
+                    }
+
+                }
 
             }
 

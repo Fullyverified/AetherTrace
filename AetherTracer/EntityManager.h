@@ -122,6 +122,8 @@ public:
 	void cleanUp();
 
 	void addEntity(std::string meshName, std::string entityName);
+	void deleteEntity(size_t index);
+
 
 	std::vector<Entity*> entities;
 	MaterialManager* materialManager;

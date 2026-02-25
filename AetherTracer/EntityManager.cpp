@@ -64,6 +64,12 @@ void EntityManager::addEntity(std::string meshName, std::string entityName) {
 
 }
 
+void EntityManager::deleteEntity(size_t index) {
+
+    auto it = entities.begin() + index;
+    entities.erase(it);
+}
+
 void EntityManager::loadScene(std::string scene_name) {
 
     std::string filepath = "assets/scenes/" + scene_name + ".json";
