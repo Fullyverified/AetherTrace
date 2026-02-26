@@ -311,7 +311,7 @@ float3 specularDirection(inout Payload payload, Material mat, float3 worldNormal
     
     float roughness = mat.roughness;
     float alpha = roughness * roughness;
-    alpha = max(alpha, 0.001f);
+    alpha = max(alpha, 0.00001f);
     float3 f0 = lerp(float3(0.04f, 0.04f, 0.04f), mat.color, mat.metallic);
     
     // local frame
@@ -487,7 +487,7 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     if (randomSample <= p_specular)
     {
         payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
-        payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state);
+        payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state) * (1.0f / p_specular);
     }
     // Transmission lobe
     else if (randomSample <= p_specular + p_transmission)
@@ -496,21 +496,21 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
         if (randomSample2 < F)
         { 
             payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
-            payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state);
+            payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state) * (1.0f / ((p_specular + p_transmission) * F));
         }
         // Refraction
         else
         {
             payload.dir = refractionDirection(payload, mat, worldNormal, uv, TIR, state);
-            payload.throughput *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state);
+            payload.throughput *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * (1.0f / (p_specular + p_transmission));
         }
     }
         // Diffuse lobe
     else if (randomSample <= p_specular + p_transmission + p_diffuse)
     {
         payload.dir = diffuseDirection(payload, mat, worldNormal, uv, state);
-        payload.throughput *= diffuseThroughput(payload, mat, worldNormal, uv, state);
-     }
+        payload.throughput *= diffuseThroughput(payload, mat, worldNormal, uv, state) * (1.0f / (p_specular + p_transmission + p_diffuse));
+    }
     
     
     return;
