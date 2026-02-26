@@ -2,6 +2,7 @@
 #include "Imgui.h"
 
 #include <string>
+#include <limits>
 
 #include "MeshManager.h"
 #include "EntityManager.h"
@@ -80,7 +81,8 @@ void UI::renderSettings() {
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 
-    ImGui::DragFloat("##White Point", &config.whitepoint, 0.1f, 0.0f, 0.0f, "White Point: %.3f");
+
+    ImGui::DragFloat("##White Point", &config.whitepoint, 0.05f, 0.001f, std::numeric_limits<float>::max(), "White Point: %.3f");
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     if (ImGui::Combo("##Tone Mapping", &current_tone_mapper, tone_mappers, static_cast<int>(Tone_Mapper::Count))) {
@@ -387,13 +389,6 @@ void UI::sceneEditor() {
         accelUpdate = true;
     }
  
-    
-    // Drop down to select a mesh Type
-
-    ImGui::Combo("##Mesh Objects", &mesh_selection_idx, UI::models.data(), static_cast<int>(UI::models.size()));
-
-    ImGui::SameLine();
-
     if (ImGui::Button("Add Entity")) {
 
         entityManager->addEntity(UI::models[mesh_selection_idx], UI::models[mesh_selection_idx]);
@@ -401,6 +396,21 @@ void UI::sceneEditor() {
         accumulationUpdate = true;
         accelUpdate = true;
     }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Swap Model")) {
+
+        entityManager->swapEntityModel(UI::models[mesh_selection_idx], UI::entity_selection_idx);
+        updateUIentity();
+        accumulationUpdate = true;
+        accelUpdate = true;
+    }
+
+    // Drop down to select a mesh Type
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    ImGui::Combo("##Mesh Objects", &mesh_selection_idx, UI::models.data(), static_cast<int>(UI::models.size()));
+
 
     ImGui::End();
 }
@@ -528,7 +538,7 @@ void UI::materialEditor() {
         // General Material Editing
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("##Roughness", &roughness, 0.05f, 0.0f, 1.0f, "Roughness %.3f")) {
+        if (ImGui::DragFloat("##Roughness", &roughness, 0.025f, 0.0f, 1.0f, "Roughness %.3f")) {
             roughness = roughness > 1 ? 1 : roughness;
             roughness = roughness < 0 ? 0 : roughness;
             selected_material->roughness = roughness;
@@ -537,7 +547,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("##Metallic", &metallic, 0.05f, 0.0f, 1.0f, "Metallic %.3f")) {
+        if (ImGui::DragFloat("##Metallic", &metallic, 0.025f, 0.0f, 1.0f, "Metallic %.3f")) {
             metallic = metallic > 1 ? 1 : metallic;
             metallic = metallic < 0 ? 0 : metallic;
             selected_material->metallic = metallic;
@@ -546,7 +556,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("##IOR", &IOR, 0.05f, 1.0f, 10.0f, "IOR %.3f")) {
+        if (ImGui::DragFloat("##IOR", &IOR, 0.025f, 1.0f, 10.0f, "IOR %.3f")) {
             IOR = IOR < 1 ? 1 : IOR;
             selected_material->ior = IOR;
             accumulationUpdate = true;
@@ -554,7 +564,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("##Transmission", &transmission, 0.05f, 0.0f, 1.0f, "Transmission %.3f")) {
+        if (ImGui::DragFloat("##Transmission", &transmission, 0.025f, 0.0f, 1.0f, "Transmission %.3f")) {
             transmission = transmission > 1 ? 1 : transmission;
             transmission = transmission < 0 ? 0 : transmission;
             selected_material->transmission = transmission;
@@ -563,7 +573,7 @@ void UI::materialEditor() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (ImGui::DragFloat("##Emission", &emission, 0.05f, 0.0f, 20.0f, "Emission %.3f")) {
+        if (ImGui::DragFloat("##Emission", &emission, 0.025f, 0.0f, 20.0f, "Emission %.3f")) {
             emission = emission < 0 ? 0 : emission;
             selected_material->emission = emission;
             accumulationUpdate = true;

@@ -69,6 +69,13 @@ void EntityManager::addEntity(std::string meshName, std::string entityName) {
 
 }
 
+void EntityManager::swapEntityModel(std::string model_name, size_t entity_idx) {
+
+    entities[entity_idx]->model = model_name;
+
+}
+
+
 void EntityManager::deleteEntity(size_t index) {
 
     auto it = entities.begin() + index;

@@ -119,11 +119,11 @@ public:
 	void saveScene(std::string scene_name);
 	void deleteScene(std::string scene_name);
 
-
 	void cleanUp();
 
 	void addEntity(std::string meshName, std::string entityName);
 	void deleteEntity(size_t index);
+	void swapEntityModel(std::string model_name, size_t entity_idx);
 
 
 	std::vector<Entity*> entities;

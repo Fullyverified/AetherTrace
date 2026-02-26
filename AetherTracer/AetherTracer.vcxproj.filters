@@ -60,11 +60,11 @@
     <ClCompile Include="DX12ResourceManager.cpp">
       <Filter>Source Files\DX12</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\Downloads\simdjson.cpp">
-      <Filter>simdjson</Filter>
-    </ClCompile>
     <ClCompile Include="MaterialManager.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="simdjson.cpp">
+      <Filter>simdjson</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -104,7 +104,7 @@
     <ClInclude Include="DX12ResourceManager.h">
       <Filter>Header Files\DX12</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\Downloads\simdjson.h">
+    <ClInclude Include="simdjson.h">
       <Filter>simdjson</Filter>
     </ClInclude>
   </ItemGroup>
