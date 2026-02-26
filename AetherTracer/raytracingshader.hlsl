@@ -434,7 +434,7 @@ float3 refractionThroughput(inout Payload payload, Material mat, float3 worldNor
     
     float F = fresnelSchlickIOR(payload, cosTheta_wi, mat.ior);
     
-    float3 throughput = (1.0f - F) * mat.color;
+    float3 throughput = (1.0f - F) * mat.color * (n2 / n1) * (n2 / n1);
     return throughput;
 }
 

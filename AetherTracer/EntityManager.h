@@ -56,7 +56,6 @@ public:
 		void update() {
 
 			rotation.y = std::clamp(rotation.y, -89.9f, 89.9f);
-
 			forward = PT::FromEuler(rotation);
 			right = PT::Cross(forward, worldUp);
 			right = PT::Normalize(right);

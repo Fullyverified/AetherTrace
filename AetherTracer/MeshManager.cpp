@@ -70,7 +70,7 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
             vertex.position = {
                 attrib.vertices[vi + 0],
                 attrib.vertices[vi + 1],
-                attrib.vertices[vi + 2]
+                attrib.vertices[vi + 2],
             };
         
             // normal (if present)
@@ -79,7 +79,7 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
                 vertex.normal = {
                     attrib.normals[ni + 0],
                     attrib.normals[ni + 1],
-                    attrib.normals[ni + 2]
+                    attrib.normals[ni + 2],
                 };   
                                 
             }
