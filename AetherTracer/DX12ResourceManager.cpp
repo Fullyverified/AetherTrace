@@ -215,6 +215,8 @@ void DX12ResourceManager::initModelBuffers() {
 	// create upload and default buffers and store them
 	for (auto& [name, loadedModel] : meshManager->loadedModels) {
 
+		std::cout << "model name: " << name << std::endl;
+
 		DX12ResourceManager::DX12Model* dx12Model = new DX12ResourceManager::DX12Model{};
 
 		dx12Model->loadedModel = loadedModel;
@@ -249,7 +251,7 @@ void DX12ResourceManager::initModelBuffers() {
 
 	for (auto& [name, dx12Model] : dx12Models) {
 
-		std::cout << "first model: " << dx12Model->loadedModel->name << std::endl;
+		std::cout << dx12Model->loadedModel->name << std::endl;
 
 		std::vector<MeshManager::Mesh>& meshes = dx12Model->loadedModel->meshes;
 
@@ -475,8 +477,6 @@ void DX12ResourceManager::initScene() {
 
 		std::cout << "Material name: " << entity->material << std::endl;
 
-		
-
 		// create material if it doesn't already exist
 		if (materials.find(entity->material) == materials.end()) {
 			std::cout << "Material doesnt exist " << std::endl;
@@ -519,6 +519,8 @@ void DX12ResourceManager::initScene() {
 	uint32_t instanceID = -1; // user provided
 	uint32_t instanceIndex = 0;
 
+	uniqueInstancesID.clear();
+
 	for (DX12ResourceManager::DX12Entity* dx12Entity : dx12entities) {
 
 		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
@@ -526,18 +528,12 @@ void DX12ResourceManager::initScene() {
 		DX12ResourceManager::ResourceHandle* objectBlas = dx12Entity->model->BLAS;
 
 		if (uniqueInstancesID.find(dx12Entity->entity->model) == uniqueInstancesID.end()) {
-			instanceID++;
+			instanceID = uniqueInstancesID.size();
 			uniqueInstancesID[dx12Entity->entity->model] = instanceID;
 		}
 		else {
 			instanceID = uniqueInstancesID[dx12Entity->entity->model];
 		}
-
-		std::cout << "InstanceIndex: " << instanceIndex << std::endl;
-		std::cout << "InstanceID: " << instanceID << std::endl;
-		std::cout << "entity: " << dx12Entity->entity->name << std::endl;
-		std::cout << "model: " << dx12Entity->entity->model << std::endl;
-
 
 		instanceData[instanceIndex] = {
 			.InstanceID = static_cast<UINT>(instanceID),

@@ -40,7 +40,7 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
         &err,
         filepath.c_str(),           // filename
         nullptr,                    // mtl_basedir = nullptr (no separate .mtl folder)
-        false,                       // triangulate = true (strongly recommended!)
+        false,                       // triangulate = true
         false                        // default_vcols_fallback = true
     );
 
@@ -80,7 +80,8 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
                     attrib.normals[ni + 0],
                     attrib.normals[ni + 1],
                     attrib.normals[ni + 2]
-                };            
+                };   
+                                
             }
             
             // texcoord
@@ -96,8 +97,7 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
             //mesh.vertices.push_back(vertex);
             //mesh.indices.push_back(static_cast<uint32_t>(mesh.vertices.size()) - 1);
 
-
-            // deduplication
+            // vertex deduplication
             VertexKey vertexKey{vertex.position.x, vertex.position.y, vertex.position.z, vertex.normal.x, vertex.normal.y, vertex.normal.z, vertex.texcoord.x, vertex.texcoord.y };
             
             auto it = uniqueVertices.find(vertexKey);
@@ -121,7 +121,8 @@ void MeshManager::loadFromObject(const std::string& fileName, bool forceOpaque, 
 
     }
 
-    
+
+
     loadedModels[fileName] = model;
 }
 

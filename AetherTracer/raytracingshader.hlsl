@@ -283,7 +283,7 @@ float PdfGGX_VNDF(float3 omega_i, float3 omega_o, float alpha)
     float D = D_GGX(dot(omega_m, float3(0.0f, 0.0f, 1.0f)), alpha);
     float G1 = G1_Smith(dot(omega_i, float3(0.0f, 0.0f, 1.0f)), alpha);
     
-    float numer = D * dot(omega_m, float3(0.0f, 0.0f, 1.0f));
+    float numer = G1 * D;
     float denom = (4.0f * abs(dot(omega_i, float3(0.0f, 0.0f, 1.0f))));
     
     return numer / denom;
@@ -346,8 +346,8 @@ float3 specularThroughput(inout Payload payload, Material mat, float3 worldNorma
     float3x3 onb = BuildONB(worldNormal);
     
     // transform to local
-    float3 viewDirLocal = worldToLocal(wi, onb);
-    float3 lightDirLocal = worldToLocal(wo, onb);
+    float3 viewDirLocal = worldToLocal(wo, onb);
+    float3 lightDirLocal = worldToLocal(wi, onb);
     
     // compute pdf
     float pdf = PdfGGX_VNDF(viewDirLocal, lightDirLocal, alpha);
@@ -392,7 +392,7 @@ float3 refractionDirection(inout Payload payload, Material mat, float3 worldNorm
     float n2 = payload.internal ? 1.0003f : mat.ior;
     //worldNormal = payload.internal ? worldNormal * -1.0f : worldNormal; // already flipped
     
-    float cosTheta_I = dot(worldNormal, wi) * 1.0f;
+    float cosTheta_I = -dot(worldNormal, wi);
     
     float sinTheta1 = sqrt(max(0.0f, 1.0f - cosTheta_I * cosTheta_I));
     float sinTheta2 = (n1 / n2) * sinTheta1;
@@ -494,7 +494,7 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     {
         // Specular (Glass)
         if (randomSample2 < F)
-        {
+        { 
             payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
             payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state);
         }
