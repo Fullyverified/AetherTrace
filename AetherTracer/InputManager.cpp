@@ -48,6 +48,9 @@ void InputManager::processInputContinuous(SDL_Event& event, float deltaTime) {
 
 	PT::Vector2 mousePos = { event.button.x, event.button.y };
 
+	if (keys[SDL_SCANCODE_LSHIFT]) {
+		deltaTime *= 3.0f;
+	}
 
 	if (keys[SDL_SCANCODE_W]) {
 		aetherTracer->entityManager->camera->moveForward(deltaTime);
@@ -73,7 +76,6 @@ void InputManager::processInputContinuous(SDL_Event& event, float deltaTime) {
 		aetherTracer->entityManager->camera->moveDown(deltaTime);
 	}
 
-	
 
 	if (lockMouse) {
 

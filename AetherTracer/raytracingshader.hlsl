@@ -110,7 +110,7 @@ void RayGeneration()
     
     for (uint i = 0; i <= maxBounces; i++)
     {
-        RAY_FLAG ray_flags = payload.internal ? RAY_FLAG_NONE : RAY_FLAG_CULL_BACK_FACING_TRIANGLES; // for refraction
+        RAY_FLAG ray_flags = payload.internal ? RAY_FLAG_NONE : RAY_FLAG_NONE; // for refraction
         TraceRay(scene, ray_flags, 0xFF, 0, 0, 0, ray, payload);
        
         ray.Origin = payload.pos;
@@ -429,9 +429,7 @@ float3 refractionThroughput(inout Payload payload, Material mat, float3 worldNor
     worldNormal = payload.internal ? worldNormal * -1.0f : worldNormal;
     
     float cosTheta_wi = abs(dot(wi, worldNormal));
-    
-    float eta = n1 / n2;
-    
+        
     float F = fresnelSchlickIOR(payload, cosTheta_wi, mat.ior);
     
     float3 throughput = (1.0f - F) * mat.color * (n2 / n1) * (n2 / n1);
@@ -458,7 +456,10 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     float uv0 = 1.0f - uv.x - uv.y;
     float3 normal = normalize(v0.normal * uv0 + v1.normal * uv.x + v2.normal * uv.y);
     float3 worldNormal = normalize(mul(normal, (float3x3) ObjectToWorld4x3()));
-    worldNormal = payload.internal == true ? worldNormal * -1.0f : worldNormal;
+    
+    worldNormal = dot(WorldRayDirection(), worldNormal) < 0 ? worldNormal : worldNormal * -1.0f;
+    
+    //worldNormal = payload.internal == true ? worldNormal * -1.0f : worldNormal;
     
     // Fetch material
     uint matID = materialIndexBuffer[instanceIndex];
@@ -505,11 +506,13 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
             payload.throughput *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * (1.0f / (p_specular + p_transmission));
         }
     }
-        // Diffuse lobe
+    // Diffuse lobe
     else if (randomSample <= p_specular + p_transmission + p_diffuse)
     {
-        payload.dir = diffuseDirection(payload, mat, worldNormal, uv, state);
-        payload.throughput *= diffuseThroughput(payload, mat, worldNormal, uv, state) * (1.0f / (p_specular + p_transmission + p_diffuse));
+
+         payload.dir = diffuseDirection(payload, mat, worldNormal, uv, state);
+         payload.throughput *= diffuseThroughput(payload, mat, worldNormal, uv, state) * (1.0f / (p_specular + p_transmission + p_diffuse));
+
     }
     
     
