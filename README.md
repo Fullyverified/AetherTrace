@@ -8,19 +8,19 @@ A DX12 Path Tracer.
 <img width="1532" height="1440" alt="head of david" src="https://github.com/user-attachments/assets/99fd2c93-ff40-4e29-9912-0718d2dd07e9" />
 
 # To do
-Architecture Refactor
-Texture support
-NEE
-MIS
-Restir DI
-Restir GI
-NRC
-DLSS / FSR
-VR
+Architecture Refactor 
+Texture support 
+NEE 
+MIS 
+Restir DI 
+Restir GI 
+NRC 
+DLSS / FSR 
+VR 
 
-Vulkan
-CPU Path Tracer
+Vulkan 
+CPU Path Tracer 
 
 # Building
-** WIP **
-DX12, ImGui, TinyObjLoader, simdjson.
+** WIP ** 
+DX12, ImGui, TinyObjLoader, simdjson. 
