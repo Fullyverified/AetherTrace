@@ -12,7 +12,6 @@ enum Tone_Mapper {
 struct Config {
 
     // initial state
-
     uint32_t resX = 3440;
     uint32_t resY = 1440;
     uint32_t internal_resX = 0;
@@ -20,7 +19,7 @@ struct Config {
     float aspectX = 21;
     float aspectY = 9;
 
-    // Multiple Importance Sampling
+    // Path Tracing Settings
     int raysPerPixel = 1;
     int minBounces = 0;
     int maxBounces = 50;
@@ -28,7 +27,6 @@ struct Config {
     bool jitter = true;
 
     // Camera
-    float fOV = 45;
     bool DepthOfField = false;
     float apertureRadius = 0.05f;
     float focalDistance = 15.0f;

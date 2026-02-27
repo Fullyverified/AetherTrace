@@ -29,6 +29,7 @@ void ImGuiDX12FreeSRV(ImGui_ImplDX12_InitInfo* init_info_unused, D3D12_CPU_DESCR
 DX12Renderer::DX12Renderer(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window) : entityManager(entityManager), meshManager(meshManager), materialManager(materialManager), window(window) {
 
 	rm = new DX12ResourceManager(meshManager, materialManager, entityManager);
+	dx12AccelerationStructureManager = new DX12AccelerationStructureManager(this);
 
 }
 
@@ -58,6 +59,7 @@ void DX12Renderer::init() {
 
 	rm->initModelBuffers(); // instanced vertex and index buffers
 	rm->initModelBLAS(); // instanced model blas
+
 	rm->initScene();
 	rm->initTopLevelAS();
 	rm->initMaterialBuffer(false);

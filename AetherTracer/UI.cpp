@@ -72,6 +72,11 @@ void UI::renderSettings() {
         accumulationUpdate = true;
     }
 
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // Set width to the available space
+    if (ImGui::SliderFloat("##FoV", &entityManager->camera->fovYDegrees, 0.0f, 180.0f, "FoV %.3f")) {
+        accumulationUpdate = true;
+    }
+
     // Drop down list of materials
 
     const char* tone_mappers[] = { "Reinhard Extended", "Hable Filmic", "Aces Filmic" };

@@ -66,6 +66,9 @@
     <ClCompile Include="simdjson.cpp">
       <Filter>simdjson</Filter>
     </ClCompile>
+    <ClCompile Include="DX12AccelerationStructureManager.cpp">
+      <Filter>Source Files\DX12</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -106,6 +109,9 @@
     </ClInclude>
     <ClInclude Include="simdjson.h">
       <Filter>simdjson</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12AccelerationStructureManager.h">
+      <Filter>Header Files\DX12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

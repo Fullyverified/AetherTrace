@@ -287,7 +287,6 @@ DX12ResourceManager::ResourceHandle* DX12ResourceManager::makeAccelerationStruct
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-		desc.Width = size;
 		ID3D12Resource* buffer;
 
 		HRESULT hr = d3dDevice->CreateCommittedResource(
