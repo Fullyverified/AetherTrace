@@ -1,7 +1,7 @@
 #include "DX12AccelerationStructureManager.h"
 
-void DX12AccelerationStructureManager::makeBottomLevel(DX12ResourceManager::DX12Model* model) {
-	
+void DX12AccelerationStructureManager::makeBottomLevel(DX12ResourceManager::DX12Model* model, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList) {
+
 	delete model->BLAS;
 
 	D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
@@ -14,7 +14,7 @@ void DX12AccelerationStructureManager::makeBottomLevel(DX12ResourceManager::DX12
 	geometryDesc.Triangles.IndexBuffer = model->indexBuffers[0]->default_buffer->GetGPUVirtualAddress();
 	geometryDesc.Triangles.IndexCount = static_cast<UINT>(model->loadedModel->meshes[0].indices.size());
 	geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
-	
+
 
 	std::cout << "Making BLAS Inputs" << std::endl;
 
@@ -71,16 +71,22 @@ void DX12AccelerationStructureManager::makeBottomLevel(DX12ResourceManager::DX12
 	cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 	cmdList->Close();
 	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
+
+
+	scratch_buffers.push_back(scratch_buffer); // store and clear after all commands submitted.
+
 	waitForGPU();
 	cmdAlloc->Reset();
 	cmdList->Reset(cmdAlloc, nullptr);
 
 
-	scratch_buffer->Release();
+	//scratch_buffer->Release();
 	delete scratch_buffer;
+
 };
 
-void DX12AccelerationStructureManager::makeTopLevel() {
+
+void DX12AccelerationStructureManager::makeTopLevel(DX12ResourceManager::ResourceHandle* TLAS, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList) {
 
 	tlas_scratch = new DX12ResourceManager::ResourceHandle{};
 	tlas = new DX12ResourceManager::ResourceHandle{};
@@ -143,5 +149,15 @@ void DX12AccelerationStructureManager::makeTopLevel() {
 }
 
 
+void DX12AccelerationStructureManager::waitForGPU() {
 
-
+	const UINT64 currentFence = fenceState;
+	cmdQueue->Signal(fence, currentFence);
+	if (fence->GetCompletedValue() < currentFence) {
+		HANDLE event = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
+		fence->SetEventOnCompletion(currentFence, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	fenceState++;
+}
