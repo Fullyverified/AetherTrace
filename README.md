@@ -12,6 +12,7 @@ Architecture Refactor
 Texture support  
 NEE  
 MIS  
+Blue Noise  
 Restir DI  
 Restir GI  
 NRC  
