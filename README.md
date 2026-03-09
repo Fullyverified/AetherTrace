@@ -20,6 +20,7 @@ DLSS / FSR
 VR  
 
 Vulkan  
+CUDA  
 CPU Path Tracer  
 
 # Building
