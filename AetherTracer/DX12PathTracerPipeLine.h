@@ -20,6 +20,8 @@
 #include "Vector.h"
 
 #include "DX12ResourceManager.h"
+#include "DX12AccelerationStructureManager.h"
+
 #include "Window.h"
 
 #include <imgui.h>
@@ -106,7 +108,7 @@ public:
 	void initSurfaces();
 	void resize();
 	void initCommand();
-	void createFence(ID3D12Fence* fence);
+	void createFence(ID3D12Fence*& fence);
 		
 	void loadShaders();
 	void initRootSignature();
@@ -143,10 +145,15 @@ public:
 	ID3D12Fence* fence;
 	UINT64 fenceState = 1;
 
+	ID3D12CommandAllocator* cmdAlloc; // block of memory
+	ID3D12GraphicsCommandList4* cmdList;
+
 	// managers
 	MeshManager* meshManager;
 	MaterialManager* materialManager;
 	EntityManager* entityManager;
-	DX12ResourceManager* rm;
 	Window* window;
+
+	DX12ResourceManager* rm;
+	DX12AccelerationStructureManager* dx12AccelerationStructureManager;
 };

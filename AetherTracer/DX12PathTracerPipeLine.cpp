@@ -28,25 +28,33 @@ void ImGuiDX12FreeSRV(ImGui_ImplDX12_InitInfo* init_info_unused, D3D12_CPU_DESCR
 
 DX12PathTracerPipeLine::DX12PathTracerPipeLine(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue)
 	: entityManager(entityManager), meshManager(meshManager), materialManager(materialManager), window(window), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue) {
-
-	rm = new DX12ResourceManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue);
-
 }
 
 void DX12PathTracerPipeLine::init() {
 
-	rm->createFence(rm->fence);
-	createFence(fence);
-
-
 	hwnd = static_cast<HWND>(window->getNativeHandle());
+
+	std::cout << "Create Fence" << std::endl;
+
+	std::cout << "init command allocator" << std::endl;
+	initCommand();
+
+	rm = new DX12ResourceManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue, cmdAlloc, cmdList);
+
+	dx12AccelerationStructureManager = new DX12AccelerationStructureManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue, cmdAlloc, cmdList);
+
+	createFence(rm->fence);
+	createFence(dx12AccelerationStructureManager->fence);
+	createFence(fence);
 
 	loadShaders();
 
 	std::cout << "init surfaces" << std::endl;
 	initSurfaces();
-	std::cout << "init command"<< std::endl;
-	initCommand();
+	
+
+	rm->cmdAlloc = cmdAlloc;
+	rm->cmdList = cmdList;
 
 	initImgui();
 
@@ -66,7 +74,7 @@ void DX12PathTracerPipeLine::init() {
 	rm->initModelBuffers(); // instanced vertex and index buffers
 	rm->initModelBLAS(); // instanced model blas
 	rm->initScene();
-	rm->initTopLevelAS();
+	dx12AccelerationStructureManager->initTopLevelAS(rm->instances);
 	rm->initMaterialBuffer(false);
 	rm->initVertexIndexBuffers();
 
@@ -76,7 +84,7 @@ void DX12PathTracerPipeLine::init() {
 	rm->initMaxLumBuffer();
 
 	std::cout << "init Global Descriptor Heap" << std::endl;
-	rm->initGlobalDescriptors();
+	rm->initGlobalDescriptors(dx12AccelerationStructureManager->tlas);
 
 	initRootSignature();
 	initComputePipeline();
@@ -95,7 +103,7 @@ void DX12PathTracerPipeLine::init() {
 
 }
 
-void DX12PathTracerPipeLine::createFence(ID3D12Fence* fence) {
+void DX12PathTracerPipeLine::createFence(ID3D12Fence*& fence) {
 	
 	d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
@@ -168,14 +176,14 @@ void DX12PathTracerPipeLine::resize() {
 
 void DX12PathTracerPipeLine::initCommand() {
 	// only one
-	d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&rm->cmdAlloc));
-	d3dDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&rm->cmdList));
+	d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmdAlloc));
+	d3dDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&cmdList));
 
-	rm->cmdAlloc->SetName(L"Default cmdAlloc");
-	rm->cmdList->SetName(L"Default cmdList");
+	cmdAlloc->SetName(L"Default cmdAlloc");
+	cmdList->SetName(L"Default cmdList");
 
-	rm->cmdAlloc->Reset();
-	rm->cmdList->Reset(rm->cmdAlloc, nullptr);
+	cmdAlloc->Reset();
+	cmdList->Reset(cmdAlloc, nullptr);
 }
 
 void DX12PathTracerPipeLine::loadShaders() {
@@ -449,7 +457,7 @@ void DX12PathTracerPipeLine::bindDescriptors() {
 	gpuHandle.ptr = heap_start + rm->accumulationTexture->heap_index_srv * rm->global_descriptor_heap_allocator->desc_increment_size;
 	rm->cmdList->SetComputeRootDescriptorTable(4, gpuHandle); // accum range SRV
 
-	gpuHandle.ptr = heap_start + rm->tlas->heap_index_srv * rm->global_descriptor_heap_allocator->desc_increment_size;
+	gpuHandle.ptr = heap_start + dx12AccelerationStructureManager->tlas->heap_index_srv * rm->global_descriptor_heap_allocator->desc_increment_size;
 	rm->cmdList->SetComputeRootDescriptorTable(5, gpuHandle); // t0 TLAS SRV
 
 	gpuHandle.ptr = heap_start + rm->allVertexBuffers[0]->heap_index_srv * rm->global_descriptor_heap_allocator->desc_increment_size;
@@ -481,7 +489,18 @@ void DX12PathTracerPipeLine::render() {
 	UI::numRays = rm->samples;
 	rm->seed++;
 
-	if (UI::accelUpdate) rm->updateTLAS();
+	if (UI::accelUpdate) {
+
+		if (entityManager->entities.size() > config.maxInstances) { // full rebuild
+			dx12AccelerationStructureManager->rebuildTLAS(rm->instances, rm->NUM_INSTANCES);
+		}
+		else { // update in place
+			rm->initScene();
+			rm->updateTransforms();
+			dx12AccelerationStructureManager->updateTLAS(rm->instances, rm->NUM_INSTANCES);
+		}
+
+	}
 	//if (UI::materialUpdate) rm->initMaterialBuffer(true);
 
 

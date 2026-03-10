@@ -3,11 +3,10 @@
 
 #include <d3dcompiler.h>
 
-DX12ResourceManager::DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue)
-	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue) {
+DX12ResourceManager::DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList)
+	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue), cmdAlloc(cmdAlloc), cmdList(cmdList) {
 
 	global_descriptor_heap_allocator = new DX12ResourceManager::DescriptorAllocator{};
-	//UAVClear_descriptor_heap_allocator = new DX12ResourceManager::DescriptorAllocator{};
 
 	renderTarget = new DX12ResourceManager::ResourceHandle;
 	accumulationTexture = new DX12ResourceManager::ResourceHandle;
@@ -42,10 +41,9 @@ void DX12ResourceManager::initDescriptorHeap(DX12ResourceManager::DescriptorAllo
 		descriptor_allocator->free_indices.push_back(i);
 	}
 
-	//global_desctiptor_heap_allocator->desc_heap->SetName(descriptor_name);
 }
 
-void DX12ResourceManager::initGlobalDescriptors() {
+void DX12ResourceManager::initGlobalDescriptors(ResourceHandle* tlas) {
 
 	if (config.debug) std::cout << "creating SRVs" << std::endl;
 
@@ -665,67 +663,6 @@ void DX12ResourceManager::initMaterialBuffer(bool is_update) {
 
 }
 
-void DX12ResourceManager::initTopLevelAS() {
-
-	tlas_scratch = new ResourceHandle{};
-	tlas = new ResourceHandle{};
-	
-	if (config.debug) std::cout << "initTopLevel()" << std::endl;
-
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {
-	.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-	.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE,
-	.NumDescs = config.maxInstances,
-	.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-	.InstanceDescs = instances->default_buffer->GetGPUVirtualAddress() };
-
-	std::cout << "NUM_INSTANCES = " << NUM_INSTANCES << std::endl;
-	std::cout << "MAX_INSTANCES = " << config.maxInstances << std::endl;
-
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
-	d3dDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfo);
-
-	D3D12_RESOURCE_DESC desc = {};
-	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	desc.Width = prebuildInfo.ScratchDataSizeInBytes;
-	desc.Height = 1;
-	desc.DepthOrArraySize = 1;
-	desc.MipLevels = 1;
-	desc.SampleDesc = NO_AA;
-	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-	HRESULT hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&tlas_scratch->default_buffer));
-	checkHR(hr, nullptr, "CreateCommittedResource for AS failed");
-
-	desc.Width = prebuildInfo.ResultDataMaxSizeInBytes;
-
-	hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, nullptr, IID_PPV_ARGS(&tlas->default_buffer));
-	checkHR(hr, nullptr, "CreateCommittedResource for AS failed");
-
-	tlas_scratch->default_buffer->SetName(L"Scratch");
-	tlas->default_buffer->SetName(L"AS");
-
-	if (tlas_scratch->default_buffer == nullptr) std::cout << "scratch nullptr" << std::endl;
-	if (tlas->default_buffer == nullptr) std::cout << "BLAS nullptr" << std::endl;
-
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {
-	.DestAccelerationStructureData = tlas->default_buffer->GetGPUVirtualAddress(), .Inputs = inputs, .ScratchAccelerationStructureData = tlas_scratch->default_buffer->GetGPUVirtualAddress() };
-
-	std::cout << "executing cmd list " << std::endl;
-
-	cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
-
-	cmdList->Close();
-	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
-	waitForGPU();
-	cmdAlloc->Reset();
-	cmdList->Reset(cmdAlloc, nullptr);
-
-	tlas_scratch->default_buffer->Release();
-	delete tlas_scratch;
-}
-
 void DX12ResourceManager::initVertexIndexBuffers() {
 
 	allVertexBuffers.clear();
@@ -834,82 +771,6 @@ void DX12ResourceManager::rebuildBLAS() {
 	initModelBLAS(); // only if a new unique model is added
 
 	initScene(); // only if a new entity is added
-
-}
-
-void DX12ResourceManager::updateTLAS() {
-
-	if (entityManager->entities.size() > config.maxInstances) {
-		std::cout << "Too many entity" << std::endl;
-		// Completely rebuild TLAS
-	}
-	
-	initScene();
-
-	// Update exisitng TLAS
-
-	updateTransforms();
-
-	tlas_scratch = new ResourceHandle{};
-
-	if (config.debug) std::cout << "initTopLevel()" << std::endl;
-
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {
-	.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-	.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE, // perform update
-	.NumDescs = config.maxInstances,
-	.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-	.InstanceDescs = instances->default_buffer->GetGPUVirtualAddress() };
-
-	std::cout << "NUM_INSTANCES = " << NUM_INSTANCES << std::endl;
-	std::cout << "MAX_INSTANCES = " << config.maxInstances << std::endl;
-
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
-	d3dDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfo);
-
-	D3D12_RESOURCE_DESC desc = {};
-	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	desc.Width = prebuildInfo.UpdateScratchDataSizeInBytes; // update scratch size
-	desc.Height = 1;
-	desc.DepthOrArraySize = 1;
-	desc.MipLevels = 1;
-	desc.SampleDesc = NO_AA;
-	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-	HRESULT hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&tlas_scratch->default_buffer));
-	checkHR(hr, nullptr, "CreateCommittedResource for TLAS failed");
-
-	desc.Width = prebuildInfo.ResultDataMaxSizeInBytes;
-
-	if (tlas_scratch->default_buffer == nullptr) std::cout << "scratch nullptr" << std::endl;
-	if (tlas->default_buffer == nullptr) std::cout << "TLAS nullptr" << std::endl;
-
-	tlas_scratch->default_buffer->SetName(L"Scratch");
-
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC updateDesc = {};
-	updateDesc.DestAccelerationStructureData = tlas->default_buffer->GetGPUVirtualAddress();
-	updateDesc.SourceAccelerationStructureData = tlas->default_buffer->GetGPUVirtualAddress(); // update, not rebuild
-	updateDesc.Inputs = inputs;
-	updateDesc.ScratchAccelerationStructureData = tlas_scratch->default_buffer->GetGPUVirtualAddress();
-
-	std::cout << "executing cmd list " << std::endl;
-
-	cmdList->BuildRaytracingAccelerationStructure(&updateDesc, 0, nullptr);
-
-	D3D12_RESOURCE_BARRIER uavBarrier = {};
-	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-	uavBarrier.UAV.pResource = tlas->default_buffer;
-	cmdList->ResourceBarrier(1, &uavBarrier);
-
-	cmdList->Close();
-	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
-	waitForGPU();
-	cmdAlloc->Reset();
-	cmdList->Reset(cmdAlloc, nullptr);
-
-	tlas_scratch->default_buffer->Release();
-	delete tlas_scratch;
 
 }
 
@@ -1119,7 +980,7 @@ void DX12ResourceManager::waitForGPU() {
 }
 
 void DX12ResourceManager::createFence(ID3D12Fence*& fence) {
-
-	d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
-
+	
+	HRESULT hr = d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+	checkHR(hr, nullptr, "Create fence");
 }

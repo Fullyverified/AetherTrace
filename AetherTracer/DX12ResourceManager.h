@@ -12,8 +12,6 @@
 #include "EntityManager.h"
 #include "MeshManager.h"
 
-
-
 class DX12ResourceManager {
 public:
 
@@ -26,7 +24,6 @@ public:
 		UINT64 heap_index_srv; // or cbv
 		UINT64 heap_index_uav;
 	};
-
 
 	struct DescriptorAllocator {
 		ID3D12DescriptorHeap* desc_heap;
@@ -46,7 +43,7 @@ public:
 
 	};
 
-	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue);
+	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 	~DX12ResourceManager() {};
 
 	
@@ -66,7 +63,6 @@ public:
 	void initModelBuffers();
 	void initModelBLAS();
 	void initScene();
-	void initTopLevelAS();
 	void initMaterialBuffer(bool is_update);
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
@@ -78,10 +74,9 @@ public:
 
 	void initDescriptorHeap(DX12ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
 
-	void initGlobalDescriptors();
+	void initGlobalDescriptors(ResourceHandle* tlas);
 
 	void rebuildBLAS();
-	void updateTLAS();
 
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
@@ -163,8 +158,8 @@ public:
 	DX12Camera* dx12Camera;
 
 	// TLAS
-	ResourceHandle* tlas;
-	ResourceHandle* tlas_scratch;
+	//ResourceHandle* tlas;
+	//ResourceHandle* tlas_scratch;
 
 	UINT NUM_INSTANCES = 0;
 	ResourceHandle* instances;

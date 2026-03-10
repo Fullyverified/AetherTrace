@@ -133,6 +133,7 @@
   <ItemGroup>
     <ClCompile Include="AetherTracer.cpp" />
     <ClCompile Include="Config.cpp" />
+    <ClCompile Include="DX12AccelerationStructureManager.cpp" />
     <ClCompile Include="DX12PathTracerPipeLine.cpp" />
     <ClCompile Include="DX12Renderer.cpp" />
     <ClCompile Include="EntityManager.cpp" />
@@ -151,6 +152,7 @@
   <ItemGroup>
     <ClInclude Include="AetherTracer.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="DX12AccelerationStructureManager.h" />
     <ClInclude Include="DX12PathTracerPipeLine.h" />
     <ClInclude Include="DX12Renderer.h" />
     <ClInclude Include="EntityManager.h" />
