@@ -24,6 +24,11 @@ struct Config {
     int raysPerPixel = 1;
     int minBounces = 0;
     int maxBounces = 50;
+
+    bool BSDF = true;
+    bool NEE = true;
+    bool MIS = true;
+
     bool accumulate = true;
     bool jitter = true;
 
