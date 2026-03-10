@@ -26,20 +26,26 @@ void ImGuiDX12FreeSRV(ImGui_ImplDX12_InitInfo* init_info_unused, D3D12_CPU_DESCR
 	ImGuiDescAlloc->free(cpu, gpu);
 }
 
-DX12PathTracerPipeLine::DX12PathTracerPipeLine(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window) : entityManager(entityManager), meshManager(meshManager), materialManager(materialManager), window(window) {
+DX12PathTracerPipeLine::DX12PathTracerPipeLine(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue)
+	: entityManager(entityManager), meshManager(meshManager), materialManager(materialManager), window(window), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue) {
 
-	rm = new DX12ResourceManager(meshManager, materialManager, entityManager);
+	rm = new DX12ResourceManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue);
 
 }
 
 void DX12PathTracerPipeLine::init() {
 
-	rm->hwnd = static_cast<HWND>(window->getNativeHandle());
+	rm->createFence(rm->fence);
+	createFence(fence);
+
+
+	hwnd = static_cast<HWND>(window->getNativeHandle());
 
 	loadShaders();
 
-	initDevice();
+	std::cout << "init surfaces" << std::endl;
 	initSurfaces();
+	std::cout << "init command"<< std::endl;
 	initCommand();
 
 	initImgui();
@@ -48,6 +54,7 @@ void DX12PathTracerPipeLine::init() {
 
 	resize();
 
+	
 	std::cout << "init Descriptor Heaps" << std::endl;
 
 	rm->initDescriptorHeap(rm->global_descriptor_heap_allocator, 1000, true, "Global Descriptor Heap");
@@ -80,7 +87,7 @@ void DX12PathTracerPipeLine::init() {
 	bindDescriptors();
 
 	rm->cmdList->Close();
-	rm->cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&rm->cmdList));
+	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&rm->cmdList));
 	rm->waitForGPU();
 
 	rm->cmdAlloc->Reset();
@@ -88,40 +95,10 @@ void DX12PathTracerPipeLine::init() {
 
 }
 
-// device
+void DX12PathTracerPipeLine::createFence(ID3D12Fence* fence) {
+	
+	d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
-void DX12PathTracerPipeLine::initDevice() {
-
-	if (FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&rm->factory))))
-		CreateDXGIFactory2(0, IID_PPV_ARGS(&rm->factory));
-
-
-	// D3D12 debug layer
-	if (ID3D12Debug* debug; SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
-		debug->EnableDebugLayer();
-		debug->Release();
-	}
-
-	/*if (ID3D12Debug1* debug1; SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug1)))) {
-		debug1->SetEnableGPUBasedValidation(true);
-		debug1->Release();
-	}*/
-
-	// feature level dx12_2
-	IDXGIAdapter* adapter = nullptr;
-	D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&rm->d3dDevice));
-
-	// command queue
-	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = { .Type = D3D12_COMMAND_LIST_TYPE_DIRECT, };
-	rm->d3dDevice->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&rm->cmdQueue));
-	// fence
-	rm->d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&rm->fence));
-
-
-	if (rm->d3dDevice == nullptr) {
-		std::cout << "device nullptr" << std::endl;
-	}
-	else std::cout << "device exists" << std::endl;
 }
 
 // swap chain
@@ -139,15 +116,14 @@ void DX12PathTracerPipeLine::initSurfaces() {
 	};
 	IDXGISwapChain1* swapChain1;
 
-	HRESULT hr = rm->factory->CreateSwapChainForHwnd(rm->cmdQueue, rm->hwnd, &scDesc, nullptr, nullptr, &swapChain1);
+	HRESULT hr = factory->CreateSwapChainForHwnd(cmdQueue, hwnd, &scDesc, nullptr, nullptr, &swapChain1);
 	checkHR(hr, nullptr, "Create swap chain: ");
-
 
 	swapChain1->QueryInterface(&rm->swapChain);
 	swapChain1->Release();
 
 	// early factory release
-	rm->factory->Release();
+	factory->Release();
 
 }
 
@@ -161,11 +137,14 @@ void DX12PathTracerPipeLine::resize() {
 	}
 
 	RECT rect;
-	GetClientRect(rm->hwnd, &rect);
+	GetClientRect(hwnd, &rect);
 	rm->width = std::max<UINT>(rect.right - rect.left, 1);
 	rm->height = std::max<UINT>(rect.bottom - rect.top, 1);
 
+	std::cout << "wait for gpu" << std::endl;
+
 	rm->waitForGPU();
+	std::cout << "wait for gpu" << std::endl;
 
 	rm->swapChain->ResizeBuffers(0, rm->width, rm->height, DXGI_FORMAT_UNKNOWN, 0);
 
@@ -189,8 +168,8 @@ void DX12PathTracerPipeLine::resize() {
 
 void DX12PathTracerPipeLine::initCommand() {
 	// only one
-	rm->d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&rm->cmdAlloc));
-	rm->d3dDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&rm->cmdList));
+	d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&rm->cmdAlloc));
+	d3dDevice->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&rm->cmdList));
 
 	rm->cmdAlloc->SetName(L"Default cmdAlloc");
 	rm->cmdList->SetName(L"Default cmdList");
@@ -342,7 +321,7 @@ void DX12PathTracerPipeLine::initRootSignature() {
 	checkHR(hr, nullptr, "D3D12SerializeRootSignature: ");
 
 
-	hr = rm->d3dDevice->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rm->rootSignature));
+	hr = d3dDevice->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rm->rootSignature));
 	checkHR(hr, errorblob, "CreateRootSignature: ");
 
 	blob->Release();
@@ -364,7 +343,7 @@ void DX12PathTracerPipeLine::initRTShaderTables() {
 	shaderIDDesc.SampleDesc = rm->NO_AA;
 	shaderIDDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	HRESULT hr = rm->d3dDevice->CreateCommittedResource(&rm->UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &shaderIDDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&rm->shaderIDs));
+	HRESULT hr = d3dDevice->CreateCommittedResource(&rm->UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &shaderIDDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&rm->shaderIDs));
 	checkHR(hr, nullptr, "initShaderTables, CreateCommittedResource: ");
 	ID3D12StateObjectProperties* props;
 	rm->raytracingPSO->QueryInterface(&props);
@@ -426,7 +405,7 @@ void DX12PathTracerPipeLine::initRayTracingPipeline() {
 		.NumSubobjects = std::size(subobjects),
 		.pSubobjects = subobjects };
 
-	HRESULT hr = rm->d3dDevice->CreateStateObject(&psoDesc, IID_PPV_ARGS(&rm->raytracingPSO));
+	HRESULT hr = d3dDevice->CreateStateObject(&psoDesc, IID_PPV_ARGS(&rm->raytracingPSO));
 	checkHR(hr, nullptr, "initPipeLine, CreateStateObject: ");
 
 }
@@ -438,7 +417,7 @@ void DX12PathTracerPipeLine::initComputePipeline() {
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.pRootSignature = rm->rootSignature;
 	psoDesc.CS = { rm->csBlob->GetBufferPointer(), rm->csBlob->GetBufferSize() };
-	HRESULT hr = rm->d3dDevice->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&rm->computePSO));
+	HRESULT hr = d3dDevice->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&rm->computePSO));
 	checkHR(hr, nullptr, "Create compute pipeline state");
 
 }
@@ -649,7 +628,7 @@ void DX12PathTracerPipeLine::present() {
 
 	rm->cmdList->Close();
 	ID3D12CommandList* lists[] = { rm->cmdList };
-	rm->cmdQueue->ExecuteCommandLists(1, lists);
+	cmdQueue->ExecuteCommandLists(1, lists);
 
 	rm->waitForGPU();
 	rm->swapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
@@ -693,16 +672,16 @@ void DX12PathTracerPipeLine::initImgui() {
 	// thanks grok
 
 	ImGuiDescAlloc = new ImGuiDescriptorAllocator{};
-	ImGuiDescAlloc->init(rm->d3dDevice, 64);
+	ImGuiDescAlloc->init(d3dDevice, 64);
 
 	// for swap chain
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = rm->frameIndexInFlight;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	rm->d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rm->rtvHeap));
+	d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rm->rtvHeap));
 	rm->rtvHeap->SetName(L"ImGui RTV Heap");
-	rm->rtvDescriptorSize = rm->d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	rm->rtvDescriptorSize = d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	// ImGui init
 	ImGui::CreateContext();
@@ -711,8 +690,8 @@ void DX12PathTracerPipeLine::initImgui() {
 	ImGui_ImplSDL3_InitForD3D(window->getSDLHandle());
 
 	ImGui_ImplDX12_InitInfo init_info = {};
-	init_info.Device = rm->d3dDevice;
-	init_info.CommandQueue = rm->cmdQueue;
+	init_info.Device = d3dDevice;
+	init_info.CommandQueue = cmdQueue;
 	init_info.NumFramesInFlight = rm->frameIndexInFlight;
 	init_info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	init_info.DSVFormat = DXGI_FORMAT_UNKNOWN;
@@ -741,7 +720,7 @@ void DX12PathTracerPipeLine::createBackBufferRTVs() {
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvStart;
 		handle.ptr += i * rm->rtvDescriptorSize;
 
-		rm->d3dDevice->CreateRenderTargetView(backBuffer, nullptr, handle);
+		d3dDevice->CreateRenderTargetView(backBuffer, nullptr, handle);
 
 		backBuffer->Release();
 	}

@@ -90,7 +90,7 @@ public:
 		ID3D12Resource* HEAP_UPLOAD_BUFFER; // cpu
 		ID3D12Resource* HEAP_DEFAULT_BUFFER; // gpu
 	};
-	DX12PathTracerPipeLine(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window);
+	DX12PathTracerPipeLine(EntityManager* entityManager, MeshManager* meshManager, MaterialManager* materialManager, Window* window, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue);
 
 	~DX12PathTracerPipeLine() {
 		// imgui
@@ -103,11 +103,11 @@ public:
 	}
 
 	void init();
-	void initDevice();
 	void initSurfaces();
 	void resize();
 	void initCommand();
-	
+	void createFence(ID3D12Fence* fence);
+		
 	void loadShaders();
 	void initRootSignature();
 	void initRayTracingPipeline();
@@ -132,6 +132,16 @@ public:
 	void barrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 
 	bool reset = false;
+
+	// inherited from the DX12Renderer  -> this
+	HWND hwnd;
+	IDXGIFactory4* factory;
+	ID3D12Device5* d3dDevice;
+	ID3D12CommandQueue* cmdQueue;
+
+	// fence
+	ID3D12Fence* fence;
+	UINT64 fenceState = 1;
 
 	// managers
 	MeshManager* meshManager;

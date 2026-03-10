@@ -3,8 +3,8 @@
 
 #include <d3dcompiler.h>
 
-DX12ResourceManager::DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager)
-	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager) {
+DX12ResourceManager::DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue)
+	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue) {
 
 	global_descriptor_heap_allocator = new DX12ResourceManager::DescriptorAllocator{};
 	//UAVClear_descriptor_heap_allocator = new DX12ResourceManager::DescriptorAllocator{};
@@ -1106,7 +1106,7 @@ void DX12ResourceManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string c
 }
 
 void DX12ResourceManager::waitForGPU() {
-
+	
 	const UINT64 currentFence = fenceState;
 	cmdQueue->Signal(fence, currentFence);
 	if (fence->GetCompletedValue() < currentFence) {
@@ -1116,4 +1116,10 @@ void DX12ResourceManager::waitForGPU() {
 		CloseHandle(event);
 	}
 	fenceState++;
+}
+
+void DX12ResourceManager::createFence(ID3D12Fence*& fence) {
+
+	d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
 }

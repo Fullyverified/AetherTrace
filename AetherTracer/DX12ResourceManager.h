@@ -46,7 +46,7 @@ public:
 
 	};
 
-	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager);
+	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue);
 	~DX12ResourceManager() {};
 
 	
@@ -58,6 +58,8 @@ public:
 	ResourceHandle* makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size = nullptr);
 
 	// INIT Resource
+	void createFence(ID3D12Fence*& fence);
+
 	void initAccumulationTexture(ResourceHandle* resource_handle, std::string resource_name);
 	void initRenderTarget(ResourceHandle* resource_handle, std::string resource_name);
 
@@ -204,12 +206,13 @@ public:
 
 	DXGI_SAMPLE_DESC NO_AA = { .Count = 1, .Quality = 0 };
 
-	
-	// device init
+	// inherited from the DX12Renderer -> DX12PathTracerPipeLine -> this
 	HWND hwnd;
 	IDXGIFactory4* factory;
 	ID3D12Device5* d3dDevice;
 	ID3D12CommandQueue* cmdQueue;
+
+	// fence
 	ID3D12Fence* fence;
 	UINT64 fenceState = 1;
 
