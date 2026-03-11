@@ -44,8 +44,10 @@ struct Config {
     bool sky = false;
     float skyBrightness = 1.0f;
 
-    // Acceleration Structure
+    // Buffer Sizes
     uint32_t maxInstances = 512;
+    uint32_t maxMaterials = 512;
+
 
     float mouseSensitivity = 0.1f;
     float sensitivity = 5.0f;

@@ -73,7 +73,7 @@ void DX12PathTracerPipeLine::init() {
 
 	rm->initModelBuffers(); // instanced vertex and index buffers
 	rm->initModelBLAS(); // instanced model blas
-	rm->initScene();
+	rm->initDX12Entites();
 	dx12AccelerationStructureManager->initTopLevelAS(rm->instances);
 	rm->initMaterialBuffer(false);
 	rm->initVertexIndexBuffers();
@@ -473,6 +473,7 @@ void DX12PathTracerPipeLine::bindDescriptors() {
 	rm->cmdList->SetComputeRootDescriptorTable(9, gpuHandle); // t3 material index buffer SRV
 
 
+
 	rm->cmdList->SetComputeRootConstantBufferView(10, rm->cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // b0 camera cbv
 
 	rm->cmdList->SetComputeRootConstantBufferView(11, rm->toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // maxLum, etc
@@ -495,15 +496,19 @@ void DX12PathTracerPipeLine::render() {
 			dx12AccelerationStructureManager->rebuildTLAS(rm->instances, rm->NUM_INSTANCES);
 		}
 		else { // update in place
-			rm->initScene();
+			rm->initDX12Entites();
 			rm->updateTransforms();
 			dx12AccelerationStructureManager->updateTLAS(rm->instances, rm->NUM_INSTANCES);
 		}
 
 	}
-	//if (UI::materialUpdate) rm->initMaterialBuffer(true);
 
+	if (UI::materialUpdate) {
+		rm->initDX12EntityMaterials();
+		rm->initMaterialBuffer(true);
+	}
 
+	//rm->initGlobalDescriptors(dx12AccelerationStructureManager->tlas);
 	bindDescriptors();
 
 	rm->updateCamera();

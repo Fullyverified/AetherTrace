@@ -40,6 +40,13 @@ public:
 			free_indices.push_back(idx);
 		}
 
+		void init(UINT num_descriptors) {
+			free_indices.clear();
+			for (int i = num_descriptors - 1; i >= 0; i--) {
+				free_indices.push_back(i);
+			}
+
+		}
 
 	};
 
@@ -48,7 +55,8 @@ public:
 
 	
 	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
-	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size);
+	void resizeResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
 	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
@@ -62,8 +70,11 @@ public:
 
 	void initModelBuffers();
 	void initModelBLAS();
-	void initScene();
+	void initDX12Entites();
+	void initDX12EntityMaterials();
+
 	void initMaterialBuffer(bool is_update);
+
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
 
@@ -151,8 +162,8 @@ public:
 	ResourceHandle* cameraConstantBuffer;
 
 	// ENTITY / BLAS
-	std::unordered_map<std::string, DX12Material*> materials;
-	std::unordered_map<std::string, DX12Model*> dx12Models;
+	std::unordered_map<std::string, DX12Material*> dx12materials_map;
+	std::unordered_map<std::string, DX12Model*> dx12Models_map;
 
 	std::vector<DX12Entity*> dx12entities;
 	DX12Camera* dx12Camera;
