@@ -81,7 +81,10 @@
     <ClCompile Include="DX12ResourceManager.cpp">
       <Filter>Source Files\DX12\PathTracer</Filter>
     </ClCompile>
-    <ClCompile Include="DX12AccelerationStructureManager.cpp">
+    <ClCompile Include="DX12TLASManager.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12BLASManager.cpp">
       <Filter>Source Files\DX12\PathTracer</Filter>
     </ClCompile>
   </ItemGroup>
@@ -128,7 +131,10 @@
     <ClInclude Include="DX12PathTracerPipeLine.h">
       <Filter>Header Files\DX12\PathTracer</Filter>
     </ClInclude>
-    <ClInclude Include="DX12AccelerationStructureManager.h">
+    <ClInclude Include="DX12TLASManager.h">
+      <Filter>Header Files\DX12\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12BLASManager.h">
       <Filter>Header Files\DX12\PathTracer</Filter>
     </ClInclude>
   </ItemGroup>

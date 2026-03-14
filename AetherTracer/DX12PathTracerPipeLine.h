@@ -20,7 +20,8 @@
 #include "Vector.h"
 
 #include "DX12ResourceManager.h"
-#include "DX12AccelerationStructureManager.h"
+#include "DX12TLASManager.h"
+#include "DX12BLASManager.h"
 
 #include "Window.h"
 
@@ -100,7 +101,7 @@ public:
 		ImGui_ImplSDL3_Shutdown();
 		ImGui::DestroyContext();
 		
-		if (rm->rtvHeap) rm->rtvHeap->Release();
+		if (dx12ResourceManager->rtvHeap) dx12ResourceManager->rtvHeap->Release();
 		//delete ImGuiDescAlloc;
 	}
 
@@ -115,6 +116,8 @@ public:
 	void initRayTracingPipeline();
 	void initComputePipeline();
 	void initRTShaderTables();
+
+	void initGlobalDescriptors();
 	void bindDescriptors();
 
 	void traceRays();
@@ -154,6 +157,7 @@ public:
 	EntityManager* entityManager;
 	Window* window;
 
-	DX12ResourceManager* rm;
-	DX12AccelerationStructureManager* dx12AccelerationStructureManager;
+	DX12ResourceManager* dx12ResourceManager;
+	DX12TLASManager* dx12TLASManager;
+	DX12BLASManager* dx12BLASManager;
 };

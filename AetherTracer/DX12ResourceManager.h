@@ -60,8 +60,6 @@ public:
 	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
 	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
-	ResourceHandle* makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size = nullptr);
-
 	// INIT Resource
 	void createFence(ID3D12Fence*& fence);
 
@@ -69,7 +67,6 @@ public:
 	void initRenderTarget(ResourceHandle* resource_handle, std::string resource_name);
 
 	void initModelBuffers();
-	void initModelBLAS();
 	void initDX12Entites();
 	void initDX12EntityMaterials();
 
@@ -84,8 +81,6 @@ public:
 	void updateRand();
 
 	void initDescriptorHeap(DX12ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
-
-	void initGlobalDescriptors(ResourceHandle* tlas);
 
 	void rebuildBLAS();
 

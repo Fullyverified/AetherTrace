@@ -41,168 +41,6 @@ void DX12ResourceManager::initDescriptorHeap(DX12ResourceManager::DescriptorAllo
 
 }
 
-void DX12ResourceManager::initGlobalDescriptors(ResourceHandle* tlas) {
-	//if (config.debug) std::cout << "creating SRVs" << std::endl;
-
-	global_descriptor_heap_allocator->init(1000);
-
-	// Create views
-	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = global_descriptor_heap_allocator->desc_heap->GetCPUDescriptorHandleForHeapStart();
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-
-	// UAV for accumulation texture
-	uavDesc = {
-		.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
-		.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D
-	};
-	d3dDevice->CreateUnorderedAccessView(accumulationTexture->default_buffer, nullptr, &uavDesc, cpuHandle);
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	accumulationTexture->heap_index_uav = global_descriptor_heap_allocator->alloc();
-
-	//if (config.debug) std::cout << "accumulationTexture->heap_index_uav: " << accumulationTexture->heap_index_uav << std::endl;
-
-
-	// UAV for RNG Buffer
-	uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_UNKNOWN,
-		uavDesc.Buffer.StructureByteStride = sizeof(uint64_t),
-		uavDesc.Buffer.NumElements = randPattern.size();
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
-
-		d3dDevice->CreateUnorderedAccessView(randBuffer->default_buffer, nullptr, &uavDesc, cpuHandle);
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	randBuffer->heap_index_uav = global_descriptor_heap_allocator->alloc();
-
-	//if (config.debug) std::cout << "randBuffer->heap_index_uav: " << randBuffer->heap_index_uav << std::endl;
-
-	// SRV for TLAS
-	srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-	srvDesc.RaytracingAccelerationStructure.Location = tlas->default_buffer->GetGPUVirtualAddress();
-
-	d3dDevice->CreateShaderResourceView(nullptr, &srvDesc, cpuHandle);
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	tlas->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-	//if (config.debug) std::cout << "tlas->heap_index_srv: " << tlas->heap_index_srv << std::endl;
-
-	// Vertex Buffer
-	for (DX12ResourceManager::ResourceHandle* vertexBuffer : allVertexBuffers) {
-		srvDesc = {};
-		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Buffer.FirstElement = 0;
-		srvDesc.Buffer.NumElements = static_cast<UINT>(vertexBuffer->default_buffer->GetDesc().Width / sizeof(MeshManager::Vertex));
-		srvDesc.Buffer.StructureByteStride = sizeof(MeshManager::Vertex);
-		d3dDevice->CreateShaderResourceView(vertexBuffer->default_buffer, &srvDesc, cpuHandle);
-
-		cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-		vertexBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-		//if (config.debug) std::cout << "srvNumElementsVertex: " << srvDesc.Buffer.NumElements << std::endl;
-	}
-	// Vertex Index Buffer
-	for (DX12ResourceManager::ResourceHandle* indexBuffer : allIndexBuffers) {
-		srvDesc = {};
-		srvDesc.Format = DXGI_FORMAT_R32_UINT;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Buffer.FirstElement = 0;
-		srvDesc.Buffer.NumElements = static_cast<UINT>(indexBuffer->default_buffer->GetDesc().Width / sizeof(uint32_t));
-		srvDesc.Buffer.StructureByteStride = 0;
-		d3dDevice->CreateShaderResourceView(indexBuffer->default_buffer, &srvDesc, cpuHandle);
-
-		cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-		indexBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
-		//if (config.debug) std::cout << "srvNumElementsIndex: " << srvDesc.Buffer.NumElements << std::endl;
-	}
-
-	// Material Buffer
-	srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.NumElements = static_cast<UINT>(dx12Materials.size());
-	srvDesc.Buffer.StructureByteStride = sizeof(DX12ResourceManager::DX12Material);
-	d3dDevice->CreateShaderResourceView(materialsBuffer->default_buffer, &srvDesc, cpuHandle);
-
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	materialsBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-	// Material Index Buffer
-	srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_R32_UINT;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.NumElements = static_cast<UINT>((materialIndexBuffer->default_buffer->GetDesc().Width) / sizeof(uint32_t));
-	srvDesc.Buffer.StructureByteStride = 0;
-	d3dDevice->CreateShaderResourceView(materialIndexBuffer->default_buffer, &srvDesc, cpuHandle);
-
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	materialIndexBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-	// Camera CBV
-	cbvDesc = {};
-	cbvDesc.BufferLocation = cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = sizeof(DX12ResourceManager::DX12Camera);
-
-	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	cameraConstantBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-	// SRV for accumulationTexture
-	srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels = 1;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	d3dDevice->CreateShaderResourceView(accumulationTexture->default_buffer, &srvDesc, cpuHandle);
-
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	accumulationTexture->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-	// UAV for renderTarget
-	uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	d3dDevice->CreateUnorderedAccessView(renderTarget->default_buffer, nullptr, &uavDesc, cpuHandle);
-
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	renderTarget->heap_index_uav = global_descriptor_heap_allocator->alloc();
-
-	// UAV for maxLumBuffer
-	uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_UNKNOWN,
-		uavDesc.Buffer.StructureByteStride = sizeof(UINT),
-		uavDesc.Buffer.NumElements = 1;
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
-
-		d3dDevice->CreateUnorderedAccessView(maxLumBuffer->default_buffer, nullptr, &uavDesc, cpuHandle);
-
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	maxLumBuffer->heap_index_uav = global_descriptor_heap_allocator->alloc();
-
-
-	// CBV post processing params
-	cbvDesc = {};
-	cbvDesc.BufferLocation = toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = sizeof(DX12ResourceManager::ToneMappingParams);
-	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
-
-	cpuHandle.ptr += global_descriptor_heap_allocator->desc_increment_size;
-	toneMappingConstantBuffer->heap_index_srv = global_descriptor_heap_allocator->alloc();
-
-}
-
 void DX12ResourceManager::initModelBuffers() {
 
 	// for vertex and index buffer SRVs
@@ -270,129 +108,6 @@ void DX12ResourceManager::initModelBuffers() {
 
 }
 
-DX12ResourceManager::ResourceHandle* DX12ResourceManager::makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size) {
-
-
-	auto makeBuffer = [this](UINT64 size, auto initialState) {
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = size;
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-		desc.Width = size;
-		ID3D12Resource* buffer;
-
-		HRESULT hr = d3dDevice->CreateCommittedResource(
-			&DEFAULT_HEAP,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			initialState,
-			nullptr,
-			IID_PPV_ARGS(&buffer)
-		);
-
-		checkHR(hr, nullptr, "CreateCommittedResource for AS failed");
-
-		return buffer;
-		};
-
-	// debug
-	if (inputs.NumDescs == 0 || inputs.pGeometryDescs == nullptr) {
-		std::cerr << "Invalid inputs: no geometry\n";
-		return nullptr;
-	}
-
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
-	d3dDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfo);
-
-	// debug
-	std::cout << "Prebuild: scratch=" << prebuildInfo.ScratchDataSizeInBytes
-		<< ", result=" << prebuildInfo.ResultDataMaxSizeInBytes << "\n";
-
-	if (prebuildInfo.ResultDataMaxSizeInBytes == 0 || prebuildInfo.ScratchDataSizeInBytes == 0) {
-		std::cerr << "Prebuild returned zero sizes — invalid geometry!\n";
-		return nullptr;
-	}
-
-	if (update_scratch_size) *update_scratch_size = prebuildInfo.UpdateScratchDataSizeInBytes;
-
-	auto* scratch = makeBuffer(prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_COMMON);
-	auto* as = makeBuffer(prebuildInfo.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
-
-	scratch->SetName(L"scratch buffer");
-	as->SetName(L"BLAS");
-
-	if (scratch == nullptr) std::cout << "scratch nullptr" << std::endl;
-	if (as == nullptr) std::cout << "BLAS nullptr" << std::endl;
-
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {
-	.DestAccelerationStructureData = as->GetGPUVirtualAddress(), .Inputs = inputs, .ScratchAccelerationStructureData = scratch->GetGPUVirtualAddress() };
-
-	std::cout << "executing cmd list " << std::endl;
-
-	cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
-	cmdList->Close();
-	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&cmdList));
-	waitForGPU();
-	cmdAlloc->Reset();
-	cmdList->Reset(cmdAlloc, nullptr);
-
-
-	scratch->Release();
-	DX12ResourceManager::ResourceHandle* resource_handle = new DX12ResourceManager::ResourceHandle{};
-	resource_handle->default_buffer = as;
-	return resource_handle;
-
-}
-
-void DX12ResourceManager::initModelBLAS() {
-
-	if (config.debug) std::cout << "initBottomLevel()" << std::endl;
-
-	for (auto& [name, model] : dx12Models_map) {
-
-		delete model->BLAS;
-
-		std::cout << "object name: " << name << std::endl;
-
-		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDescs;
-
-		for (size_t i = 0; i < model->vertexBuffers.size(); i++) {
-
-			D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
-			geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-			geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-			geometryDesc.Triangles.VertexBuffer.StartAddress = model->vertexBuffers[i]->default_buffer->GetGPUVirtualAddress();
-			geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(MeshManager::Vertex);
-			geometryDesc.Triangles.VertexCount = static_cast<UINT>(model->loadedModel->meshes[i].vertices.size());
-			geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-			geometryDesc.Triangles.IndexBuffer = model->indexBuffers[i]->default_buffer->GetGPUVirtualAddress();
-			geometryDesc.Triangles.IndexCount = static_cast<UINT>(model->loadedModel->meshes[i].indices.size());
-			geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
-			geomDescs.push_back(geometryDesc);
-		}
-
-		std::cout << "making accel struc inputs: " << std::endl;
-
-		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {
-			.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-			.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
-			.NumDescs = static_cast<UINT>(geomDescs.size()),
-			.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-			.pGeometryDescs = geomDescs.data() };
-
-		std::cout << "making accel struc " << std::endl;
-
-		model->BLAS = makeAccelerationStructure(inputs);
-		model->BLAS->default_buffer->SetName(L"Model BLAS");
-	}
-
-}
 
 void DX12ResourceManager::updateCamera() {
 
@@ -459,6 +174,12 @@ void DX12ResourceManager::updateCamera() {
 }
 
 void DX12ResourceManager::initDX12EntityMaterials() {
+
+	// rebuilding every material seems inefficient, fix later
+
+	for (auto& pair : dx12materials_map) {
+		delete pair.second;
+	}
 
 	dx12materials_map.clear();
 
@@ -646,9 +367,12 @@ void DX12ResourceManager::initMaterialBuffer(bool is_update) {
 	size_t materialsSize = dx12Materials.size() * sizeof(DX12ResourceManager::DX12Material);
 	size_t indexSize = materialIndices.size() * sizeof(uint32_t);
 
+	size_t materials_size_max = config.maxMaterials * sizeof(DX12ResourceManager::DX12Material);
+	size_t index_size_max = config.maxInstances * sizeof(uint32_t);
+
 	if (!is_update) {
-		materialsBuffer = createResourceHandle(dx12Materials.data(), materialsSize, D3D12_RESOURCE_STATE_COMMON, false);
-		materialIndexBuffer = createResourceHandle(materialIndices.data(), indexSize, D3D12_RESOURCE_STATE_COMMON, false);
+		materialsBuffer = createResourceHandle(dx12Materials.data(), materials_size_max, D3D12_RESOURCE_STATE_COMMON, false);
+		materialIndexBuffer = createResourceHandle(materialIndices.data(), index_size_max, D3D12_RESOURCE_STATE_COMMON, false);
 
 		materialsBuffer->upload_buffer->SetName(L"Materials Upload Buffer");
 		materialIndexBuffer->upload_buffer->SetName(L"Materials Index Upload Default Buffer");
@@ -656,8 +380,8 @@ void DX12ResourceManager::initMaterialBuffer(bool is_update) {
 		materialIndexBuffer->default_buffer->SetName(L"Materials Index Default Buffer");
 	}
 	else {
-		updateResourceHandle(materialsBuffer, dx12Materials.data(), materialsSize);
-		updateResourceHandle(materialIndexBuffer, materialIndices.data(), indexSize);
+		updateResourceHandle(materialsBuffer, dx12Materials.data(), materials_size_max);
+		updateResourceHandle(materialIndexBuffer, materialIndices.data(), index_size_max);
 
 	}
 

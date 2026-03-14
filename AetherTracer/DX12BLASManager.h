@@ -14,25 +14,22 @@
 
 #include "DX12ResourceManager.h"
 
-class DX12AccelerationStructureManager {
+class DX12BLASManager {
 
 public:
 
-	DX12AccelerationStructureManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
-	~DX12AccelerationStructureManager() {};
+	DX12BLASManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 
-	void initTopLevelAS(DX12ResourceManager::ResourceHandle* instances);
-
-	void rebuildTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES);
-	void updateTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES);
-
+	void createModelBLAS(std::unordered_map<std::string, DX12ResourceManager::DX12Model*> models_map);
+	DX12ResourceManager::ResourceHandle* makeAccelerationStructure(D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs);
 
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
 	void waitForGPU();
 
-	DX12ResourceManager::ResourceHandle* tlas_scratch;
-	DX12ResourceManager::ResourceHandle* tlas;
+
+	std::unordered_map<std::string, DX12ResourceManager::ResourceHandle*> dx12Models_BLAS_map;
+
 
 	// inherited from the DX12Renderer -> DX12PathTracerPipeLine -> this
 	IDXGIFactory4* factory;
@@ -52,6 +49,5 @@ public:
 	DXGI_SAMPLE_DESC NO_AA = { .Count = 1, .Quality = 0 };
 	D3D12_HEAP_PROPERTIES UPLOAD_HEAP = { .Type = D3D12_HEAP_TYPE_UPLOAD };
 	D3D12_HEAP_PROPERTIES DEFAULT_HEAP = { .Type = D3D12_HEAP_TYPE_DEFAULT };
-
 };
 

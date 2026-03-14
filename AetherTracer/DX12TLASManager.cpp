@@ -1,10 +1,10 @@
-#include "DX12AccelerationStructureManager.h"
+#include "DX12TLASManager.h"
 
-DX12AccelerationStructureManager::DX12AccelerationStructureManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList)
+DX12TLASManager::DX12TLASManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList)
 	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue), cmdAlloc(cmdAlloc), cmdList(cmdList) {
 };
 
-void DX12AccelerationStructureManager::initTopLevelAS(DX12ResourceManager::ResourceHandle* instances) {
+void DX12TLASManager::initTopLevelAS(DX12ResourceManager::ResourceHandle* instances) {
 
 	tlas_scratch = new DX12ResourceManager::ResourceHandle{};
 	tlas = new DX12ResourceManager::ResourceHandle{};
@@ -65,11 +65,11 @@ void DX12AccelerationStructureManager::initTopLevelAS(DX12ResourceManager::Resou
 	delete tlas_scratch;
 }
 
-void DX12AccelerationStructureManager::rebuildTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES) {
+void DX12TLASManager::rebuildTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES) {
 
 }
 
-void DX12AccelerationStructureManager::updateTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES) {
+void DX12TLASManager::updateTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES) {
 
 	// Update exisitng TLAS
 	tlas_scratch = new DX12ResourceManager::ResourceHandle{};
@@ -137,7 +137,7 @@ void DX12AccelerationStructureManager::updateTLAS(DX12ResourceManager::ResourceH
 
 // helper
 
-void DX12AccelerationStructureManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context) {
+void DX12TLASManager::checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context) {
 	if (FAILED(hr)) {
 		std::cerr << context << "HRESULT 0x" << std::hex << hr << std::endl;
 		if (hr == E_OUTOFMEMORY) std::cerr << "(Out of memory?)\n";
@@ -149,7 +149,7 @@ void DX12AccelerationStructureManager::checkHR(HRESULT hr, ID3DBlob* errorblob, 
 	}
 }
 
-void DX12AccelerationStructureManager::waitForGPU() {
+void DX12TLASManager::waitForGPU() {
 
 	const UINT64 currentFence = fenceState;
 	cmdQueue->Signal(fence, currentFence);
