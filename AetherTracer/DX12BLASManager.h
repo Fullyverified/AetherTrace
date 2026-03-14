@@ -28,7 +28,7 @@ public:
 	void waitForGPU();
 
 
-	std::unordered_map<std::string, DX12ResourceManager::ResourceHandle*> dx12Models_BLAS_map;
+	std::unordered_map<std::string, DX12ResourceManager::ResourceHandle*> dx12Models_BLAS_map; // TO BE USED LATER
 
 
 	// inherited from the DX12Renderer -> DX12PathTracerPipeLine -> this

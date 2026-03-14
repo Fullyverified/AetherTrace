@@ -460,8 +460,8 @@ void DX12PathTracerPipeLine::initGlobalDescriptors() {
 	// UAV for RNG Buffer
 	uavDesc = {};
 	uavDesc.Format = DXGI_FORMAT_UNKNOWN,
-		uavDesc.Buffer.StructureByteStride = sizeof(uint64_t),
-		uavDesc.Buffer.NumElements = dx12ResourceManager->randPattern.size();
+	uavDesc.Buffer.StructureByteStride = sizeof(uint64_t),
+	uavDesc.Buffer.NumElements = dx12ResourceManager->randPattern.size();
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
 
 		d3dDevice->CreateUnorderedAccessView(dx12ResourceManager->randBuffer->default_buffer, nullptr, &uavDesc, cpuHandle);

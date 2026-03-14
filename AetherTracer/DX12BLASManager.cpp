@@ -44,9 +44,11 @@ void DX12BLASManager::createModelBLAS(std::unordered_map<std::string, DX12Resour
 
 		std::cout << "making accel struc " << std::endl;
 
-		model->BLAS = makeAccelerationStructure(inputs);
+		DX12ResourceManager::ResourceHandle* BLAS = makeAccelerationStructure(inputs);
+		model->BLAS = BLAS;
 		model->BLAS->default_buffer->SetName(L"Model BLAS");
 
+		dx12Models_BLAS_map[model->loadedModel->name] = BLAS; // TO BE USED LATER
 	}
 
 }
@@ -102,17 +104,29 @@ DX12ResourceManager::ResourceHandle* DX12BLASManager::makeAccelerationStructure(
 		return nullptr;
 	}
 
-	auto* scratch = makeBuffer(prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_COMMON);
-	auto* as = makeBuffer(prebuildInfo.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Width = prebuildInfo.ScratchDataSizeInBytes;
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	ID3D12Resource* scratch;
 
+	HRESULT hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&scratch));
+	checkHR(hr, nullptr, "CreateCommittedResource for AS failed");
 	scratch->SetName(L"scratch buffer");
-	as->SetName(L"BLAS");
 
-	if (scratch == nullptr) std::cout << "scratch nullptr" << std::endl;
-	if (as == nullptr) std::cout << "BLAS nullptr" << std::endl;
+	desc.Width = prebuildInfo.ResultDataMaxSizeInBytes;
+	ID3D12Resource* BLAS;
+	hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, nullptr, IID_PPV_ARGS(&BLAS));
+	BLAS->SetName(L"BLAS");
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {
-	.DestAccelerationStructureData = as->GetGPUVirtualAddress(), .Inputs = inputs, .ScratchAccelerationStructureData = scratch->GetGPUVirtualAddress() };
+	.DestAccelerationStructureData = BLAS->GetGPUVirtualAddress(), .Inputs = inputs, .ScratchAccelerationStructureData = scratch->GetGPUVirtualAddress() };
 
 	std::cout << "executing cmd list " << std::endl;
 
@@ -126,7 +140,7 @@ DX12ResourceManager::ResourceHandle* DX12BLASManager::makeAccelerationStructure(
 
 	scratch->Release();
 	DX12ResourceManager::ResourceHandle* resource_handle = new DX12ResourceManager::ResourceHandle{};
-	resource_handle->default_buffer = as;
+	resource_handle->default_buffer = BLAS;
 	return resource_handle;
 
 

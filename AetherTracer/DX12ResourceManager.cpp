@@ -108,7 +108,6 @@ void DX12ResourceManager::initModelBuffers() {
 
 }
 
-
 void DX12ResourceManager::updateCamera() {
 
 	entityManager->camera->update();
@@ -290,7 +289,7 @@ void DX12ResourceManager::initDX12Entites() {
 			.InstanceMask = 0,
 			.InstanceContributionToHitGroupIndex = 0,
 			.Flags = 0,
-			.AccelerationStructure = dummyModel->BLAS->default_buffer->GetGPUVirtualAddress(),
+			//.AccelerationStructure = dummyModel->BLAS->default_buffer->GetGPUVirtualAddress(),
 		};
 
 		instanceIndex++;
@@ -496,7 +495,7 @@ void DX12ResourceManager::updateToneParams() {
 void DX12ResourceManager::rebuildBLAS() {
 
 	initModelBuffers(); // only if a new unique model is added
-	initModelBLAS(); // only if a new unique model is added
+	//initModelBLAS(); // only if a new unique model is added
 
 	initDX12Entites(); // only if a new entity is added
 
