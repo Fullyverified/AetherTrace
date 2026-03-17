@@ -524,7 +524,7 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
         else
         {
             payload.dir = refractionDirection(payload, mat, worldNormal, uv, TIR, state);
-            payload.bounce_weight *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * 1.0f / 1.0f - ((p_specular + p_transmission) * F);
+            payload.bounce_weight *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * 1.0f / (1.0f - ((p_specular + p_transmission) * F));
         }
     }
     // Diffuse lobe
