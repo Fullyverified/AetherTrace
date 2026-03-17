@@ -87,6 +87,9 @@
     <ClCompile Include="DX12BLASManager.cpp">
       <Filter>Source Files\DX12\PathTracer</Filter>
     </ClCompile>
+    <ClCompile Include="DX12MaterialManager.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -135,6 +138,9 @@
       <Filter>Header Files\DX12\PathTracer</Filter>
     </ClInclude>
     <ClInclude Include="DX12BLASManager.h">
+      <Filter>Header Files\DX12\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12MaterialManager.h">
       <Filter>Header Files\DX12\PathTracer</Filter>
     </ClInclude>
   </ItemGroup>

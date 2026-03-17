@@ -187,17 +187,17 @@ void DX12ResourceManager::initDX12EntityMaterials() {
 		EntityManager::Entity* entity = entityManager->entities[i];
 		DX12ResourceManager::DX12Entity* dx12Entity = dx12entities[i];
 
-		std::cout << "Material name: " << entity->material << std::endl;
+		//std::cout << "Material name: " << entity->material << std::endl;
 		// create material if it doesn't already exist
 		if (dx12materials_map.find(entity->material) == dx12materials_map.end()) {
-			std::cout << "Material doesnt exist " << std::endl;
+			//std::cout << "Material doesnt exist " << std::endl;
 
 			DX12ResourceManager::DX12Material* dx12Material = new DX12ResourceManager::DX12Material{ materialManager->materials[entity->material] };
 			dx12materials_map[entity->material] = dx12Material;
 			dx12Entity->material = dx12Material;
 		}
 		else {
-			std::cout << "Material exists " << std::endl;
+			//std::cout << "Material exists " << std::endl;
 			dx12Entity->material = dx12materials_map[entity->material];
 		}
 
@@ -222,7 +222,6 @@ void DX12ResourceManager::initDX12Entites() {
 		dx12entities.push_back(dx12Entity);
 	}
 
-	initDX12EntityMaterials();
 
 	if (config.debug) std::cout << "creating instances" << std::endl;
 
@@ -570,11 +569,7 @@ DX12ResourceManager::ResourceHandle* DX12ResourceManager::createResourceHandle(c
 	memcpy(mapped, data, byteSize); // copy data to upload buffer
 	upload->Unmap(0, nullptr); // 7
 
-	// VRAM Buffer
-
-	D3D12_HEAP_PROPERTIES DEFAULT_HEAP = { .Type = D3D12_HEAP_TYPE_DEFAULT };
-
-	// Create target buffer in DEFAULT heap
+	// Create target buffer in DEFAULT heap (VRAM)
 
 	if (UAV) {
 		DESC.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;

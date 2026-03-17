@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include <vector>
 #include "DirectXMath.h"
 #include <d3d12.h>
@@ -53,11 +55,10 @@ public:
 	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 	~DX12ResourceManager() {};
 
-	
 	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size);
-	void resizeResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
+	void resizeResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
 	// INIT Resource

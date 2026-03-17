@@ -45,9 +45,12 @@ void DX12PathTracerPipeLine::init() {
 
 	dx12BLASManager = new DX12BLASManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue, cmdAlloc, cmdList);
 
+	dx12MaterialManager = new DX12MaterialManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue, cmdAlloc, cmdList);
+
 	createFence(dx12ResourceManager->fence);
 	createFence(dx12TLASManager->fence);
 	createFence(dx12BLASManager->fence);
+	createFence(dx12MaterialManager->fence);
 	createFence(fence);
 
 	loadShaders();
@@ -78,6 +81,9 @@ void DX12PathTracerPipeLine::init() {
 	dx12BLASManager->createModelBLAS(dx12ResourceManager->dx12Models_map);
 	
 	dx12ResourceManager->initDX12Entites();
+	dx12ResourceManager->initDX12EntityMaterials();
+
+
 	dx12TLASManager->initTopLevelAS(dx12ResourceManager->instances);
 	dx12ResourceManager->initMaterialBuffer(false);
 	dx12ResourceManager->initVertexIndexBuffers();
@@ -95,6 +101,8 @@ void DX12PathTracerPipeLine::init() {
 	initRTShaderTables();
 
 	bindDescriptors();
+
+	dx12MaterialManager->initMaterials(dx12ResourceManager->dx12entities);
 
 	dx12ResourceManager->cmdList->Close();
 	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&dx12ResourceManager->cmdList));

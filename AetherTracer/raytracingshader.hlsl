@@ -1,6 +1,6 @@
 ﻿struct [raypayload] Payload // 76 bytes
 {
-    float3 throughput : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+    float3 bounce_weight : read(caller, closesthit, miss) : write(caller, closesthit, miss);
     float3 emission : read(caller, closesthit, miss) : write(caller, closesthit, miss);
     float3 pos : read(caller, closesthit, miss) : write(caller, closesthit, miss);
     float3 dir : read(caller, closesthit, miss) : write(caller, closesthit, miss);
@@ -99,13 +99,15 @@ void RayGeneration()
     ray.TMax = 1e20f;
 
     Payload payload;
-    payload.throughput = float3(1.0f, 1.0f, 1.0f);
+    payload.bounce_weight = float3(1.0f, 1.0f, 1.0f);
     payload.emission = float3(0.0f, 0.0f, 0.0f);
     payload.missed = false;
     payload.pixelIndex = pixelIndex;
     payload.dims = dims;
     payload.bounceNum = 0;
     payload.internal = false;
+    
+    float3 throughput = float3(1.0f, 1.0f, 1.0f);
     float3 finalColor = float3(0.0f, 0.0f, 0.0f);
     
     for (uint i = 0; i <= maxBounces; i++)
@@ -119,25 +121,29 @@ void RayGeneration()
         // terminate ray if at end of path
         if (payload.missed || payload.emission.x > 0.0f || payload.emission.y > 0.0f || payload.emission.z > 0.0f)
         {
-            finalColor += payload.throughput * payload.emission;
+            finalColor += payload.bounce_weight * payload.emission;
             break;
         }
         
         // Russian roullete
         if (i > minBounces)
         {
-            float maxComponent = max(payload.throughput.x, max(payload.throughput.y, payload.throughput.z));
+            float maxComponent = max(throughput.x, max(throughput.y, throughput.z));
             uint64_t state = randPattern[pixelIndex.x + pixelIndex.y * dims.x];
             float rand = randomPCG(state);
             randPattern[payload.pixelIndex.x + payload.pixelIndex.y * payload.dims.x] = state; // write back updated state
             if (rand > maxComponent)
             {
-                finalColor += payload.throughput * payload.emission;
+                finalColor += throughput * payload.bounce_weight * payload.emission;
                 break;
             }
-            payload.throughput *= 1.0f / maxComponent;
+            throughput *= 1.0f / maxComponent;
 
 
+        }
+        else
+        {
+            throughput *= payload.bounce_weight;
         }
         
         
@@ -274,17 +280,32 @@ float3 SampleBRDF_GGX(float3 omega_i, float alpha, float3 xi)
 
 float PdfGGX_VNDF(float3 omega_i, float3 omega_o, float alpha)
 {
-    if (dot(omega_o, float3(0.0f, 0.0f, 1.0f)) <= 0.0f)
+    
+    float NoI = omega_i.z;
+    float NoO = omega_o.z;
+    
+    if (NoI <= 0.0f || NoO <= 0.0f)
     {
         return 0.0f;
     }
     
     float3 omega_m = normalize(omega_i + omega_o);
-    float D = D_GGX(dot(omega_m, float3(0.0f, 0.0f, 1.0f)), alpha);
-    float G1 = G1_Smith(dot(omega_i, float3(0.0f, 0.0f, 1.0f)), alpha);
     
-    float numer = G1 * D;
-    float denom = (4.0f * abs(dot(omega_i, float3(0.0f, 0.0f, 1.0f))));
+    float NoM = omega_m.z;
+    float IoM = abs(dot(omega_i, omega_m));
+    float OoM = abs(dot(omega_o, omega_m));
+    
+    if (NoM <= 0.0f || IoM <= 0.0f || OoM <= 0.0f)
+    {
+        return 0.0f;
+    }
+    
+    
+    float D = D_GGX(NoM, alpha);
+    float G1 = G1_Smith(NoI, alpha);
+    
+    float numer = D * G1 * IoM / abs(NoI);
+    float denom = 4.0f * OoM;
     
     return numer / denom;
 }
@@ -476,8 +497,8 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     // Sample lobe
     float randomSample = randomPCG(state);
     float randomSample2 = randomPCG(state);
-    float p_specular = mat.metallic;
-    float p_transmission = mat.transmission * (1.0f - mat.metallic);
+    float p_specular = lerp(0.04f, 1.0f, mat.metallic);
+    float p_transmission = mat.transmission * (1.0f - p_specular);
     float p_diffuse = 1.0f - (p_specular + p_transmission);
     float F = fresnelSchlickIOR(payload, cosTheta_i, mat.ior);
     
@@ -488,7 +509,7 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     if (randomSample <= p_specular)
     {
         payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
-        payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state) * (1.0f / p_specular);
+        payload.bounce_weight *= specularThroughput(payload, mat, worldNormal, uv, state) * 1.0f / p_specular;
     }
     // Transmission lobe
     else if (randomSample <= p_specular + p_transmission)
@@ -497,22 +518,20 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
         if (randomSample2 < F)
         { 
             payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
-            payload.throughput *= specularThroughput(payload, mat, worldNormal, uv, state) * (1.0f / ((p_specular + p_transmission) * F));
+            payload.bounce_weight *= specularThroughput(payload, mat, worldNormal, uv, state) * 1.0f / ((p_specular + p_transmission) * F);
         }
         // Refraction
         else
         {
             payload.dir = refractionDirection(payload, mat, worldNormal, uv, TIR, state);
-            payload.throughput *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * (1.0f / (p_specular + p_transmission));
+            payload.bounce_weight *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * 1.0f / 1.0f - ((p_specular + p_transmission) * F);
         }
     }
     // Diffuse lobe
     else if (randomSample <= p_specular + p_transmission + p_diffuse)
     {
-
-         payload.dir = diffuseDirection(payload, mat, worldNormal, uv, state);
-         payload.throughput *= diffuseThroughput(payload, mat, worldNormal, uv, state) * (1.0f / (p_specular + p_transmission + p_diffuse));
-
+        payload.dir = diffuseDirection(payload, mat, worldNormal, uv, state);
+        payload.bounce_weight *= diffuseThroughput(payload, mat, worldNormal, uv, state) * 1.0f / (p_specular + p_transmission + p_diffuse);
     }
     
     
@@ -539,14 +558,14 @@ void Miss(inout Payload payload)
     payload.missed = true;
     if (!sky)
     {
-        payload.throughput *= float3(0.0f, 0.0f, 0.0f);
+        payload.bounce_weight *= float3(0.0f, 0.0f, 0.0f);
         return;
     }
     
      
     float slope = normalize(WorldRayDirection()).y;
     float t = saturate(slope * 2 + 0.5);
-    payload.throughput *= lerp(skyBottom, skyTop, t);
+    payload.bounce_weight *= lerp(skyBottom, skyTop, t);
     payload.emission = float3(skyBrightness, skyBrightness, skyBrightness);
     return;
 }

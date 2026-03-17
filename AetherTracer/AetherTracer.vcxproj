@@ -134,6 +134,7 @@
     <ClCompile Include="AetherTracer.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="DX12BLASManager.cpp" />
+    <ClCompile Include="DX12MaterialManager.cpp" />
     <ClCompile Include="DX12TLASManager.cpp" />
     <ClCompile Include="DX12PathTracerPipeLine.cpp" />
     <ClCompile Include="DX12Renderer.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="AetherTracer.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="DX12BLASManager.h" />
+    <ClInclude Include="DX12MaterialManager.h" />
     <ClInclude Include="DX12TLASManager.h" />
     <ClInclude Include="DX12PathTracerPipeLine.h" />
     <ClInclude Include="DX12Renderer.h" />

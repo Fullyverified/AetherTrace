@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include <vector>
 #include "DirectXMath.h"
 #include <d3d12.h>

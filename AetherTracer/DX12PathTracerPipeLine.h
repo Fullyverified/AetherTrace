@@ -22,6 +22,7 @@
 #include "DX12ResourceManager.h"
 #include "DX12TLASManager.h"
 #include "DX12BLASManager.h"
+#include "DX12MaterialManager.h"
 
 #include "Window.h"
 
@@ -160,4 +161,5 @@ public:
 	DX12ResourceManager* dx12ResourceManager;
 	DX12TLASManager* dx12TLASManager;
 	DX12BLASManager* dx12BLASManager;
+	DX12MaterialManager* dx12MaterialManager;
 };
