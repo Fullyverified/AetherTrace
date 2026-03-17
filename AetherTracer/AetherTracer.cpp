@@ -22,6 +22,8 @@ void AetherTracer::run() {
 		frameStartTime = std::chrono::high_resolution_clock::now();
 
 		auto deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - physicsTime);
+		physicsTime = std::chrono::high_resolution_clock::now();
+
 		while (SDL_PollEvent(&event)) {
 			ImGui_ImplSDL3_ProcessEvent(&event);
 
@@ -34,7 +36,6 @@ void AetherTracer::run() {
 		// physics
 		// rebuild bvh
 
-		physicsTime = std::chrono::high_resolution_clock::now();
 		updateConfig();
 
 		renderImgui();

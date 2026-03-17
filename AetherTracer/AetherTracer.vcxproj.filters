@@ -28,6 +28,18 @@
     <Filter Include="simdjson">
       <UniqueIdentifier>{ac7650b9-7fc4-4319-8f0e-71c310471cef}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\DX12\PathTracer">
+      <UniqueIdentifier>{583601c8-08e9-4f45-8653-f9ca8270f73b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DX12\PathTracer">
+      <UniqueIdentifier>{98cf021d-bf01-4370-90ab-ff9c58bee6d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Vulkan\PathTracer">
+      <UniqueIdentifier>{78321650-8848-4ff7-833e-af384a675d50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Vulkan\PathTracer">
+      <UniqueIdentifier>{88b90f01-1eb3-453f-8bb8-74ccee9b984c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -54,17 +66,29 @@
     <ClCompile Include="AetherTracer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DX12Renderer.cpp">
-      <Filter>Source Files\DX12</Filter>
-    </ClCompile>
-    <ClCompile Include="DX12ResourceManager.cpp">
-      <Filter>Source Files\DX12</Filter>
-    </ClCompile>
     <ClCompile Include="MaterialManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="simdjson.cpp">
       <Filter>simdjson</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12Renderer.cpp">
+      <Filter>Source Files\DX12</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12PathTracerPipeLine.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12ResourceManager.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12TLASManager.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12BLASManager.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12MaterialManager.cpp">
+      <Filter>Source Files\DX12\PathTracer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -98,14 +122,26 @@
     <ClInclude Include="InputManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="simdjson.h">
+      <Filter>simdjson</Filter>
+    </ClInclude>
     <ClInclude Include="DX12Renderer.h">
       <Filter>Header Files\DX12</Filter>
     </ClInclude>
     <ClInclude Include="DX12ResourceManager.h">
-      <Filter>Header Files\DX12</Filter>
+      <Filter>Header Files\DX12\PathTracer</Filter>
     </ClInclude>
-    <ClInclude Include="simdjson.h">
-      <Filter>simdjson</Filter>
+    <ClInclude Include="DX12PathTracerPipeLine.h">
+      <Filter>Header Files\DX12\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12TLASManager.h">
+      <Filter>Header Files\DX12\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12BLASManager.h">
+      <Filter>Header Files\DX12\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12MaterialManager.h">
+      <Filter>Header Files\DX12\PathTracer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

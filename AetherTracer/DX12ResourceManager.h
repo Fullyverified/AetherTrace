@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include <vector>
 #include "DirectXMath.h"
 #include <d3d12.h>
@@ -11,8 +13,6 @@
 #include "MaterialManager.h"
 #include "EntityManager.h"
 #include "MeshManager.h"
-
-
 
 class DX12ResourceManager {
 public:
@@ -26,7 +26,6 @@ public:
 		UINT64 heap_index_srv; // or cbv
 		UINT64 heap_index_uav;
 	};
-
 
 	struct DescriptorAllocator {
 		ID3D12DescriptorHeap* desc_heap;
@@ -43,29 +42,37 @@ public:
 			free_indices.push_back(idx);
 		}
 
+		void init(UINT num_descriptors) {
+			free_indices.clear();
+			for (int i = num_descriptors - 1; i >= 0; i--) {
+				free_indices.push_back(i);
+			}
+
+		}
 
 	};
 
-	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager);
+	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 	~DX12ResourceManager() {};
 
-	
 	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
-	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size);
 	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
+	void resizeResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
 
-	ResourceHandle* makeAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& inputs, UINT64* update_scratch_size = nullptr);
-
 	// INIT Resource
+	void createFence(ID3D12Fence*& fence);
+
 	void initAccumulationTexture(ResourceHandle* resource_handle, std::string resource_name);
 	void initRenderTarget(ResourceHandle* resource_handle, std::string resource_name);
 
 	void initModelBuffers();
-	void initModelBLAS();
-	void initScene();
-	void initTopLevelAS();
+	void initDX12Entites();
+	void initDX12EntityMaterials();
+
 	void initMaterialBuffer(bool is_update);
+
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
 
@@ -76,10 +83,7 @@ public:
 
 	void initDescriptorHeap(DX12ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
 
-	void initGlobalDescriptors();
-
 	void rebuildBLAS();
-	void updateTLAS();
 
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
@@ -154,15 +158,15 @@ public:
 	ResourceHandle* cameraConstantBuffer;
 
 	// ENTITY / BLAS
-	std::unordered_map<std::string, DX12Material*> materials;
-	std::unordered_map<std::string, DX12Model*> dx12Models;
+	std::unordered_map<std::string, DX12Material*> dx12materials_map;
+	std::unordered_map<std::string, DX12Model*> dx12Models_map;
 
 	std::vector<DX12Entity*> dx12entities;
 	DX12Camera* dx12Camera;
 
 	// TLAS
-	ResourceHandle* tlas;
-	ResourceHandle* tlas_scratch;
+	//ResourceHandle* tlas;
+	//ResourceHandle* tlas_scratch;
 
 	UINT NUM_INSTANCES = 0;
 	ResourceHandle* instances;
@@ -204,12 +208,13 @@ public:
 
 	DXGI_SAMPLE_DESC NO_AA = { .Count = 1, .Quality = 0 };
 
-	
-	// device init
+	// inherited from the DX12Renderer -> DX12PathTracerPipeLine -> this
 	HWND hwnd;
 	IDXGIFactory4* factory;
 	ID3D12Device5* d3dDevice;
 	ID3D12CommandQueue* cmdQueue;
+
+	// fence
 	ID3D12Fence* fence;
 	UINT64 fenceState = 1;
 

@@ -296,7 +296,8 @@ void UI::sceneEditor() {
     if (ImGui::Combo("##Materials", &entity_material_idx, UI::materials.data(), static_cast<int>(UI::materials.size()))) {
 
         entityManager->entities[entity_selection_idx]->material = UI::materials[entity_material_idx];
-
+        accumulationUpdate = true;
+        materialUpdate = true;
     }
 
     // Position
