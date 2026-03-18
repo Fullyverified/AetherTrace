@@ -65,8 +65,8 @@ void DX12ResourceManager::initModelBuffers() {
 			size_t ibSize = mesh.indices.size() * sizeof(uint32_t);
 			std::cout << ": vbSize=" << vbSize << " bytes, ibSize=" << ibSize << " bytes" << std::endl;
 
-			DX12ResourceHandle *vertexBuffer = createResourceHandle(mesh.vertices.data(), vbSize, D3D12_RESOURCE_STATE_COMMON, false);
-			DX12ResourceHandle* indexBuffer = createResourceHandle(mesh.indices.data(), ibSize, D3D12_RESOURCE_STATE_COMMON, false);
+			DX12ResourceHandle *vertexBuffer = createResourceHandle(mesh.vertices.data(), vbSize, vbSize, D3D12_RESOURCE_STATE_COMMON, false);
+			DX12ResourceHandle* indexBuffer = createResourceHandle(mesh.indices.data(), ibSize, vbSize, D3D12_RESOURCE_STATE_COMMON, false);
 
 			vertexBuffer->upload_buffer->SetName(L"Object Vertex Upload Buffer");
 			indexBuffer->upload_buffer->SetName(L"Object Index Upload Buffer");
@@ -176,6 +176,10 @@ void DX12ResourceManager::initDX12Entites() {
 
 	if (config.debug) std::cout << "initScene()" << std::endl;
 
+	for (DX12Entity* dx12Entity : dx12entities) {
+		delete dx12Entity;
+	}
+
 	dx12entities.clear();
 
 	for (size_t i = 0; i < entityManager->entities.size(); i++) {
@@ -218,6 +222,8 @@ void DX12ResourceManager::initDX12Entites() {
 	uniqueInstancesID.clear();
 
 	for (DX12Entity* dx12Entity : dx12entities) {
+
+		std::cout << "DX12Entity model: " << dx12Entity->model->loadedModel->name << std::endl;
 
 		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
 
@@ -352,7 +358,7 @@ void DX12ResourceManager::updateRand() {
 	}
 
 	size_t randSize = randPattern.size() * sizeof(uint64_t);
-	randBuffer = createResourceHandle(randPattern.data(), randSize, D3D12_RESOURCE_STATE_COMMON, true);
+	randBuffer = createResourceHandle(randPattern.data(), randSize, randSize, D3D12_RESOURCE_STATE_COMMON, true);
 	randBuffer->default_buffer->SetName(L"rng Defaut Buffer");
 	pushResourceHandle(randBuffer, randSize, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -363,7 +369,7 @@ void DX12ResourceManager::initMaxLumBuffer() {
 	std::vector<UINT> lum;
 	lum.resize(1);
 	lum[0] = 1u;
-	maxLumBuffer = createResourceHandle(lum.data(), sizeof(UINT), D3D12_RESOURCE_STATE_COMMON, true);
+	maxLumBuffer = createResourceHandle(lum.data(), sizeof(UINT), sizeof(UINT), D3D12_RESOURCE_STATE_COMMON, true);
 	maxLumBuffer->default_buffer->SetName(L"Max Luminance Buffer");
 	pushResourceHandle(maxLumBuffer, sizeof(UINT), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -450,13 +456,13 @@ void DX12ResourceManager::initAccumulationTexture(DX12ResourceHandle* resource_h
 
 }
 
-DX12ResourceHandle* DX12ResourceManager::createResourceHandle(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV) {
+DX12ResourceHandle* DX12ResourceManager::createResourceHandle(const void* data, size_t byte_size, size_t max_size, D3D12_RESOURCE_STATES finalState, bool UAV) {
 	//std::cout << "byteSize: " << byteSize << std::endl;
 
 	// CPU Buffer (upload buffer)
 	D3D12_RESOURCE_DESC DESC = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-		.Width = byteSize,
+		.Width = max_size,
 		.Height = 1,
 		.DepthOrArraySize = 1,
 		.MipLevels = 1,
@@ -471,7 +477,7 @@ DX12ResourceHandle* DX12ResourceManager::createResourceHandle(const void* data, 
 
 	void* mapped;
 	upload->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
-	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	memcpy(mapped, data, byte_size); // copy data to upload buffer
 	upload->Unmap(0, nullptr); // 7
 
 	// Create target buffer in DEFAULT heap (VRAM)
@@ -488,12 +494,12 @@ DX12ResourceHandle* DX12ResourceManager::createResourceHandle(const void* data, 
 	return resource_handle;
 }
 
-void DX12ResourceManager::updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byteSize) {
+void DX12ResourceManager::updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size, size_t max_size) {
 	//std::cout << "byteSize: " << byteSize << std::endl;
 
 	void* mapped;
 	resource_handle->upload_buffer->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
-	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	memcpy(mapped, data, byte_size); // copy data to upload buffer
 	resource_handle->upload_buffer->Unmap(0, nullptr); //
 }
 

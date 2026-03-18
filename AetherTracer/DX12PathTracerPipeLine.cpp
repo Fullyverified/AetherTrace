@@ -90,6 +90,11 @@ void DX12PathTracerPipeLine::init() {
 	dx12ResourceManager->initMaxLumBuffer();
 
 	dx12MaterialManager->initMaterials(true, true, true);
+	dx12ResourceManager->cmdList->Close();
+	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&dx12ResourceManager->cmdList));
+	dx12ResourceManager->waitForGPU();
+	dx12ResourceManager->cmdAlloc->Reset();
+	dx12ResourceManager->cmdList->Reset(dx12ResourceManager->cmdAlloc, nullptr);
 	dx12MaterialManager->initMaterialBuffers(false);
 
 	initGlobalDescriptors();

@@ -175,8 +175,10 @@ void DX12MaterialManager::initMaterialBuffers(bool is_update) {
 	size_t index_size_max = config.maxInstances * sizeof(UINT);
 
 	if (!is_update) {
-		materialsBuffer = createResourceHandle(dx12materials.data(), materials_size_max, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, false);
-		materialIndexBuffer = createResourceHandle(material_indices.data(), index_size_max, D3D12_RESOURCE_STATE_INDEX_BUFFER, false);
+		std::cout << "materials buffer" << std::endl;
+		materialsBuffer = createResourceHandle(dx12materials.data(), materialsSize, materials_size_max, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, false);
+		std::cout << "material index buffer" << std::endl;
+		materialIndexBuffer = createResourceHandle(material_indices.data(), indexSize, index_size_max, D3D12_RESOURCE_STATE_INDEX_BUFFER, false);
 
 		materialsBuffer->upload_buffer->SetName(L"Materials Upload Buffer");
 		materialIndexBuffer->upload_buffer->SetName(L"Materials Index Upload Default Buffer");
@@ -184,8 +186,8 @@ void DX12MaterialManager::initMaterialBuffers(bool is_update) {
 		materialIndexBuffer->default_buffer->SetName(L"Materials Index Default Buffer");
 	}
 	else {
-		updateResourceHandle(materialsBuffer, dx12materials.data(), materials_size_max);
-		updateResourceHandle(materialIndexBuffer, material_indices.data(), index_size_max);
+		updateResourceHandle(materialsBuffer, dx12materials.data(), materialsSize, materials_size_max);
+		updateResourceHandle(materialIndexBuffer, material_indices.data(), indexSize, index_size_max);
 
 	}
 
@@ -369,13 +371,13 @@ void DX12MaterialManager::pushTexture(DX12ResourceHandle* texture_handle, D3D12_
 
 // utility
 
-DX12ResourceHandle* DX12MaterialManager::createResourceHandle(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV) {
+DX12ResourceHandle* DX12MaterialManager::createResourceHandle(const void* data, size_t byte_size, size_t max_size, D3D12_RESOURCE_STATES finalState, bool UAV) {
 	//std::cout << "byteSize: " << byteSize << std::endl;
 
 	// CPU Buffer (upload buffer)
 	D3D12_RESOURCE_DESC DESC = {
 		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-		.Width = byteSize,
+		.Width = max_size,
 		.Height = 1,
 		.DepthOrArraySize = 1,
 		.MipLevels = 1,
@@ -386,11 +388,12 @@ DX12ResourceHandle* DX12MaterialManager::createResourceHandle(const void* data, 
 
 
 	ID3D12Resource* upload;
-	d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload));
+	HRESULT hr = d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload));
+	checkHR(hr, nullptr, "CreateCommittedResource UPLOAD for either materials buffer or materials index buffer failed");
 
 	void* mapped;
 	upload->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
-	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	memcpy(mapped, data, byte_size); // copy data to upload buffer
 	upload->Unmap(0, nullptr); // 7
 
 	// Create target buffer in DEFAULT heap (VRAM)
@@ -399,14 +402,16 @@ DX12ResourceHandle* DX12MaterialManager::createResourceHandle(const void* data, 
 		DESC.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
 	ID3D12Resource* target = nullptr;
-	d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&target));
+	hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&target));
+	checkHR(hr, nullptr, "CreateCommittedResource DEFAULT for either materials buffer or materials index buffer failed");
+
 
 	DX12ResourceHandle* resource_handle = new DX12ResourceHandle();
 	resource_handle->upload_buffer = upload;
 	resource_handle->default_buffer = target;
 
 	// Barrier - transition target to COPY_DEST
-	D3D12_RESOURCE_BARRIER barrier = {};
+	D3D12_RESOURCE_BARRIER barrier = {}; 
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 	barrier.Transition.pResource = resource_handle->default_buffer;
@@ -418,12 +423,12 @@ DX12ResourceHandle* DX12MaterialManager::createResourceHandle(const void* data, 
 	return resource_handle;
 }
 
-void DX12MaterialManager::updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byteSize) {
+void DX12MaterialManager::updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size, size_t max_size) {
 	//std::cout << "byteSize: " << byteSize << std::endl;
 
 	void* mapped;
 	resource_handle->upload_buffer->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
-	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	memcpy(mapped, data, byte_size); // copy data to upload buffer
 	resource_handle->upload_buffer->Unmap(0, nullptr); //
 }
 

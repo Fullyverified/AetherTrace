@@ -47,8 +47,8 @@ public:
 	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 	~DX12ResourceManager() {};
 
-	DX12ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
-	void updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size);
+	DX12ResourceHandle* createResourceHandle(const void* data, size_t byte_size, size_t max_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size, size_t max_size);
 	void pushResourceHandle(DX12ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
 	void resizeResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
 	void createCBV(DX12ResourceHandle* resource_handle, size_t byte_size);

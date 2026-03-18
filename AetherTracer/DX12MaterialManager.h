@@ -52,11 +52,11 @@ public:
 
 	void pushTexture(DX12ResourceHandle* texture_handle, D3D12_PLACED_SUBRESOURCE_FOOTPRINT tex_footprint, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after, bool is_1x1);
 
-	DX12ResourceHandle* createResourceHandle(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV);
+	DX12ResourceHandle* createResourceHandle(const void* data, size_t byte_size, size_t max_size, D3D12_RESOURCE_STATES finalState, bool UAV);
 
 	void pushResourceHandle(DX12ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
 
-	void updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byteSize);
+	void updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size, size_t max_size);
 
 
 	// Utility
