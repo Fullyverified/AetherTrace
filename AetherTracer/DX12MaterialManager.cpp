@@ -6,160 +6,196 @@
 DX12MaterialManager::DX12MaterialManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList)
 	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue), cmdAlloc(cmdAlloc), cmdList(cmdList) {
 }
-void DX12MaterialManager::initMaterials(std::vector<DX12ResourceManager::DX12Entity*> dx12entities) {
+void DX12MaterialManager::initMaterials(bool new_material, bool changed_material, bool entity_material_changed) {
 
-	for (auto& [string, DX12Material] : dx12materials_map) {
-		delete DX12Material;
+	for (auto& [name, dx12material] : dx12materials_map) {
+		delete dx12material;
 	}
 
+	dx12materials.clear();
 	dx12materials_map.clear();
+	dx12materials_indices_map.clear();
+	material_indices.clear();
+
+	std::cout << "Creating Materials" << std::endl;
+
+	texture_maps.push_back(createTextureFromVector({ 0.0f })); // dummy material in first slot, indice = 0 means no map, use fallback
+
+	for (auto& [mat_name, material] : materialManager->materials) {
+	
+		std::cout << "Material name: " << mat_name << std::endl;
+
+		// create material if it doesn't already exist
+		if (dx12materials_map.find(mat_name) == dx12materials_map.end()) {
+
+			MaterialManager::Material* material = materialManager->materials[mat_name]; // original material
+			DX12Material* dx12Material = new DX12Material{}; // DX12 Texture material
+
+			dx12Material->albedo = { material->color.x, material->color.y, material->color.z };
+			dx12Material->roughness = { material->roughness };
+			dx12Material->metallic = { material->metallic };
+			dx12Material->ior = { material->ior };
+			dx12Material->transmission = { material->transmission };
+			dx12Material->emission = { material->emission };
+
+
+			std::string texture_name;
+
+			std::cout << "albedo texture" << std::endl;
+			// albedo texture
+			texture_name = material->textureMap;
+			if (texture_name == "") {
+				dx12Material->textureMap = {0}; // fallback to raw value
+			}
+			else { // load from texture file
+				if (texture_indices_map.find(texture_name) == texture_indices_map.end()) { // not in map
+					texture_maps.push_back(createTextureFromImage(texture_name));
+					texture_indices_map[texture_name] = static_cast<UINT>(texture_maps.size() - 1);
+					dx12Material->textureMap = static_cast<UINT>(texture_maps.size() - 1);
+				}
+				else {
+					// in map
+					dx12Material->textureMap = texture_indices_map[texture_name];
+				}
+			}
+			
+			std::cout << "roughness texture" << std::endl;
+			// roughness texture
+			texture_name = material->roughnessMap;
+			if (texture_name == "") {
+				dx12Material->roughnessMap = 0; // fallback to raw value
+			}
+			else { // load from texture file
+				if (texture_indices_map.find(texture_name) == texture_indices_map.end()) { // not in map
+					texture_maps.push_back(createTextureFromImage(texture_name));
+					texture_indices_map[texture_name] = static_cast<UINT>(texture_maps.size() - 1);
+					dx12Material->roughnessMap = static_cast<UINT>(texture_maps.size() - 1);
+				}
+				else {
+					// in map
+					dx12Material->roughnessMap = texture_indices_map[texture_name];
+				}
+			}
+
+			std::cout << "metallic texture" << std::endl;
+			// metallic texture
+			texture_name = material->metallicMap;
+			std::cout << "metallic map name: " << texture_name << std::endl;
+			if (texture_name == "") {
+				dx12Material->metallicMap = 0; // fallback to raw value
+			}
+			else { // load from texture file
+				if (texture_indices_map.find(texture_name) == texture_indices_map.end()) { // not in map
+					texture_maps.push_back(createTextureFromImage(texture_name));
+					texture_indices_map[texture_name] = static_cast<UINT>(texture_maps.size() - 1);
+					dx12Material->metallicMap = static_cast<UINT>(texture_maps.size() - 1);
+				}
+				else {
+					// in map
+					dx12Material->metallicMap = texture_indices_map[texture_name];
+				}
+			}
+
+			// ior // NO MAP FOR IOR
+			dx12Material->ior = material->ior;
+
+			// tranmission // NO MAP FOR Transmission
+			dx12Material->transmission = material->transmission;
+
+
+
+			std::cout << "emission texture" << std::endl;
+			// emission texture
+			texture_name = material->emissionMap;
+			if (texture_name == "") {
+				dx12Material->emissionMap = 0; // fallback to raw value
+			}
+			else { // load from texture file
+				if (texture_indices_map.find(texture_name) == texture_indices_map.end()) { // not in map
+					texture_maps.push_back(createTextureFromImage(texture_name));
+					texture_indices_map[texture_name] = static_cast<UINT>(texture_maps.size() - 1);
+					dx12Material->emissionMap = static_cast<UINT>(texture_maps.size() - 1);
+				}
+				else {
+					// in map
+					dx12Material->emissionMap = texture_indices_map[texture_name];
+				}
+			}
+
+			// normal texture
+			texture_name = material->normalMap;
+			if (texture_name == "") {
+				dx12Material->normalMap = 0; // fallback to raw value
+			}
+			else { // load from texture file
+				if (texture_indices_map.find(texture_name) == texture_indices_map.end()) { // not in map
+					texture_maps.push_back(createTextureFromImage(texture_name));
+					texture_indices_map[texture_name] = static_cast<UINT>(texture_maps.size() - 1);
+					dx12Material->normalMap = static_cast<UINT>(texture_maps.size() - 1);
+				}
+				else {
+					// in map
+					dx12Material->normalMap = texture_indices_map[texture_name];
+				}
+			}
+
+
+			dx12Material->displacementMap = 0;
+
+			// store
+			dx12materials_map[mat_name] = dx12Material;
+			dx12materials.push_back(*dx12Material);
+			dx12materials_indices_map[material->name] = static_cast<UINT>(dx12materials.size() - 1);
+		}
+
+	
+	}
+	if (config.debug) std::cout << "Finished Materials" << std::endl;
 
 	for (size_t i = 0; i < entityManager->entities.size(); i++) {
 
 		EntityManager::Entity* entity = entityManager->entities[i];
-		DX12ResourceManager::DX12Entity* dx12Entity = dx12entities[i];
 
-		std::cout << "Material name: " << entity->material << std::endl;
-		std::cout << "Entity model" << entity->model << std::endl;
+		UINT material_indice = dx12materials_indices_map[entity->material];
+		material_indices.push_back(material_indice);
 
-		// create material if it doesn't already exist
-		if (dx12materials_map.find(entity->material) == dx12materials_map.end()) {
-
-			std::cout << "Material doesnt exist " << std::endl;
-
-			std::cout << "Creating material " << std::endl;
-
-			DX12Material* dx12Material = new DX12Material {}; // DX12 Texture material
-
-			std::cout << "Fetching original material " << std::endl;
-
-			MaterialManager::Material* material = materialManager->materials[entity->material]; // original material
-
-			std::cout << "Creating albedo texture " << std::endl;
-
-			// albedo texture
-			// instancing for the 1x1 float values
-			// convert vector3 to string and look up in map
-			std::string texture_name = material->textureMap != "" ? material->textureMap : material->name + " abledo";
-			std::cout << "Texture name " << texture_name <<std::endl;
-			if (texture_indices_map.find(texture_name) == texture_indices_map.end()) { // not in map
-				std::cout << "not in map " << std::endl;
-
-				DX12ResourceManager::ResourceHandle* texture;
-
-				// create from vector / float
-				if (material->textureMap == "") {
-					texture = createTextureFromVector(material->color);
-					pushTexture(texture, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-					texture_maps.push_back(texture);
-					texture_indices_map[texture_name] = texture_maps.size() - 1;
-					dx12Material->textureMap = texture_maps.size() - 1;
-	
-				}
-				// load from file
-				else {
-
-					
-				
-				}
-
-				
-				
-
-			} else {
-			// in map
-				dx12Material->textureMap = texture_indices_map[texture_name];
-				std::cout << "in map " << std::endl;
-			}
-
-			std::cout << "Creating roughness texture " << std::endl;
-
-
-			// roughness
-			std::string roughness_name = material->roughnessMap != "" ? material->roughnessMap : material->name + " roughness";
-
-			if (roughness_indices_map.find(roughness_name) == roughness_indices_map.end()) { // not in map
-				DX12ResourceManager::ResourceHandle* texture = createTextureFromVector({ material->roughness });
-				pushTexture(texture, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-				roughness_maps.push_back(texture);
-				roughness_indices_map[texture_name] = roughness_maps.size() - 1;
-				dx12Material->roughnessMap = roughness_maps.size() - 1;
-
-			}
-			else {
-				// in map
-				dx12Material->roughnessMap = roughness_indices_map[texture_name];
-			}
-
-
-
-			// metallic
-			std::string metallic_name = material->metallicMap != "" ? material->metallicMap : material->name + " metallic";
-
-			if (metallic_indices_map.find(metallic_name) == metallic_indices_map.end()) { // not in map
-				DX12ResourceManager::ResourceHandle* texture = createTextureFromVector({ material->metallic });
-				pushTexture(texture, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-				metallic_maps.push_back(texture);
-				metallic_indices_map[texture_name] = metallic_maps.size() - 1;
-				dx12Material->metallicMap = metallic_maps.size() - 1;
-
-			}
-			else {
-				// in map
-				dx12Material->metallicMap = metallic_indices_map[texture_name];
-			}
-
-
-			// emission
-			std::string emission_name = material->emissionMap != "" ? material->emissionMap : material->name + " emission";
-
-			if (emission_indices_map.find(emission_name) == emission_indices_map.end()) { // not in map
-				DX12ResourceManager::ResourceHandle* texture = createTextureFromVector({ material->emission });
-				pushTexture(texture, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-				emission_maps.push_back(texture);
-				emission_indices_map[texture_name] = emission_maps.size() - 1;
-				dx12Material->emissionMap = emission_maps.size() - 1;
-				
-			}
-			else {
-				// in map
-				dx12Material->emissionMap = emission_indices_map[texture_name];
-			}
-
-
-
-			// normalMap
-			std::string normal_name = material->normalMap != "" ? material->normalMap : "normalmap_unused";
-
-			if (normal_indices_map.find(normal_name) == normal_indices_map.end()) { // not in map - first time
-				DX12ResourceManager::ResourceHandle* texture = createTextureFromVector({ 0.0f }); // triple 0.0f normal
-				pushTexture(texture, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
-				normal_maps.push_back(texture);
-				normal_indices_map[texture_name] = normal_maps.size() - 1;
-				dx12Material->normalMap = normal_maps.size() - 1;
-
-			}
-			else {
-				// in map
-				dx12Material->normalMap = normal_indices_map[texture_name];
-				// every "regular" material (not using an image map) should default to this. normals read from obj file or computed.
-			}
-
-
-
-			dx12materials_map[entity->material] = dx12Material;
-		}
-
+		std::cout << "Entity Name: " << entity->name << std::endl;
+		std::cout << "Material Index: " << material_indice << std::endl;
 	}
-
-	if (config.debug) std::cout << "Finished Materials" << std::endl;
 
 }
 
+void DX12MaterialManager::initMaterialBuffers(bool is_update) {
 
-DX12ResourceManager::ResourceHandle* DX12MaterialManager::createTextureFromVector(PT::Vector3 value) {
 
-	std::cout << "createFromTexture()" << std::endl;
+	size_t materialsSize = dx12materials.size() * sizeof(DX12Material);
+	size_t indexSize = material_indices.size() * sizeof(UINT);
+
+	size_t materials_size_max = config.maxMaterials * sizeof(DX12Material);
+	size_t index_size_max = config.maxInstances * sizeof(UINT);
+
+	if (!is_update) {
+		materialsBuffer = createResourceHandle(dx12materials.data(), materials_size_max, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, false);
+		materialIndexBuffer = createResourceHandle(material_indices.data(), index_size_max, D3D12_RESOURCE_STATE_INDEX_BUFFER, false);
+
+		materialsBuffer->upload_buffer->SetName(L"Materials Upload Buffer");
+		materialIndexBuffer->upload_buffer->SetName(L"Materials Index Upload Default Buffer");
+		materialsBuffer->default_buffer->SetName(L"Materials Default Buffer");
+		materialIndexBuffer->default_buffer->SetName(L"Materials Index Default Buffer");
+	}
+	else {
+		updateResourceHandle(materialsBuffer, dx12materials.data(), materials_size_max);
+		updateResourceHandle(materialIndexBuffer, material_indices.data(), index_size_max);
+
+	}
+
+	pushResourceHandle(materialsBuffer, materialsSize, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	pushResourceHandle(materialIndexBuffer, indexSize, D3D12_RESOURCE_STATE_INDEX_BUFFER, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+}
+
+DX12ResourceHandle* DX12MaterialManager::createTextureFromVector(PT::Vector3 value) {
+
+	std::cout << "createTextureFromVector()" << std::endl;
 
 
 	uint8_t r = static_cast<uint8_t>(std::round(value.x * 255.0f));
@@ -170,12 +206,12 @@ DX12ResourceManager::ResourceHandle* DX12MaterialManager::createTextureFromVecto
 	uint32_t pixel = (a << 24) | (b << 16) | (g << 8) | r;
 
 	std::cout << "New resource handle " << std::endl;
-	DX12ResourceManager::ResourceHandle* texture = new DX12ResourceManager::ResourceHandle{};
+	DX12ResourceHandle* texture = new DX12ResourceHandle{};
 
 	// upload buffer
 	D3D12_RESOURCE_DESC descUpload = {};
 	descUpload.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; // upload buffer must be a dimension buffer
-	descUpload.Width = sizeof(UINT);
+	descUpload.Width = 256;
 	descUpload.Height = 1;
 	descUpload.DepthOrArraySize = 1;
 	descUpload.MipLevels = 1;
@@ -213,13 +249,77 @@ DX12ResourceManager::ResourceHandle* DX12MaterialManager::createTextureFromVecto
 
 	
 	std::cout << "push " << std::endl;
-	pushTexture(texture, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON); // 1x1 texture now exists on GPU
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT tex_footprint = {};
+	pushTexture(texture, tex_footprint, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true); // 1x1 texture now exists on GPU
 	
 	std::cout << "return texture " << std::endl;
 	return texture;
 }
 
-void DX12MaterialManager::pushTexture(DX12ResourceManager::ResourceHandle* texture_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after) {
+DX12ResourceHandle* DX12MaterialManager::createTextureFromImage(std::string name) {
+
+	std::cout << "createTextureFromImage()" << std::endl;
+
+	MaterialManager::Texture* texture_data = materialManager->textures[name];
+
+	std::cout << "New resource handle " << std::endl;
+	DX12ResourceHandle* texture = new DX12ResourceHandle{};
+
+	std::cout << "target buffer" << std::endl;
+	// Create target buffer in DEFAULT heap (VRAM)
+	D3D12_RESOURCE_DESC descDefault = {};
+	descDefault.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D; // default buffer can be TEXTURE2D
+	descDefault.Width = texture_data->width;
+	descDefault.Height = texture_data->height;
+	descDefault.DepthOrArraySize = 1;
+	descDefault.MipLevels = 1;
+	descDefault.SampleDesc.Count = 1;
+	descDefault.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	descDefault.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN; // GPU choses swizzle layout
+	descDefault.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	HRESULT hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &descDefault, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&texture->default_buffer));
+	checkHR(hr, nullptr, "Create texture target buffer");
+
+	UINT64 upload_buffer_size;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT tex_footprint;
+	d3dDevice->GetCopyableFootprints(&descDefault, 0, 1, 0, &tex_footprint, nullptr, nullptr, &upload_buffer_size);
+
+	// upload buffer
+	D3D12_RESOURCE_DESC descUpload = {};
+	descUpload.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; // upload buffer must be a dimension buffer
+	descUpload.Width = upload_buffer_size;
+	descUpload.Height = 1;
+	descUpload.DepthOrArraySize = 1;
+	descUpload.MipLevels = 1;
+	descUpload.SampleDesc.Count = 1;
+	descUpload.Format = DXGI_FORMAT_UNKNOWN;
+	descUpload.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	descUpload.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	hr = d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &descUpload, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&texture->upload_buffer));
+	checkHR(hr, nullptr, "Create texture upload buffer");
+
+	std::cout << "upload data with padding" << std::endl;
+	// upload data
+	void* mapped;
+	texture->upload_buffer->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
+
+	// one row at a time
+	for (int y = 0; y < texture_data->height; ++y) {
+		memcpy((unsigned char*)mapped + (y * tex_footprint.Footprint.RowPitch), texture_data->data + (y * texture_data->width * 4), texture_data->width * 4);
+	}
+
+	texture->upload_buffer->Unmap(0, nullptr);
+
+	std::cout << "push " << std::endl;
+	pushTexture(texture, tex_footprint, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, false); // 1x1 texture now exists on GPU
+
+	std::cout << "return texture " << std::endl;
+	return texture;
+}
+
+void DX12MaterialManager::pushTexture(DX12ResourceHandle* texture_handle, D3D12_PLACED_SUBRESOURCE_FOOTPRINT tex_footprint, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after, bool is_1x1) {
 
 	// Barrier - transition target to COPY_DEST
 	D3D12_RESOURCE_BARRIER barrier = {};
@@ -229,7 +329,11 @@ void DX12MaterialManager::pushTexture(DX12ResourceManager::ResourceHandle* textu
 	barrier.Transition.StateBefore = state_before;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	//cmdList->ResourceBarrier(1, &barrier); // already in copydest
+
+	if (state_before != D3D12_RESOURCE_STATE_COPY_DEST) {
+		cmdList->ResourceBarrier(1, &barrier);
+	}
+	
 
 	// Copy to GPU
 	D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
@@ -241,15 +345,16 @@ void DX12MaterialManager::pushTexture(DX12ResourceManager::ResourceHandle* textu
 	srcLoc.pResource = texture_handle->upload_buffer;
 	srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
-	footprint.Offset = 0;
-	footprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	footprint.Footprint.Width = 1;
-	footprint.Footprint.Height = 1;
-	footprint.Footprint.Depth = 1;
-	footprint.Footprint.RowPitch = 4;               // 1 pixel × 4 bytes
+	if (is_1x1) {
+		tex_footprint.Offset = 0;
+		tex_footprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		tex_footprint.Footprint.Width = 1;
+		tex_footprint.Footprint.Height = 1;
+		tex_footprint.Footprint.Depth = 1;
+		tex_footprint.Footprint.RowPitch = 256;
+	}
 
-	srcLoc.PlacedFootprint = footprint;
+	srcLoc.PlacedFootprint = tex_footprint;
 
 	cmdList->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
 
@@ -259,6 +364,89 @@ void DX12MaterialManager::pushTexture(DX12ResourceManager::ResourceHandle* textu
 	barrier.Transition.StateAfter = state_after;
 	cmdList->ResourceBarrier(1, &barrier);
 	
+}
+
+
+// utility
+
+DX12ResourceHandle* DX12MaterialManager::createResourceHandle(const void* data, size_t byteSize, D3D12_RESOURCE_STATES finalState, bool UAV) {
+	//std::cout << "byteSize: " << byteSize << std::endl;
+
+	// CPU Buffer (upload buffer)
+	D3D12_RESOURCE_DESC DESC = {
+		.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Width = byteSize,
+		.Height = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels = 1,
+		.SampleDesc = NO_AA,
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags = D3D12_RESOURCE_FLAG_NONE,
+	};
+
+
+	ID3D12Resource* upload;
+	d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload));
+
+	void* mapped;
+	upload->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
+	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	upload->Unmap(0, nullptr); // 7
+
+	// Create target buffer in DEFAULT heap (VRAM)
+
+	if (UAV) {
+		DESC.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+	ID3D12Resource* target = nullptr;
+	d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&target));
+
+	DX12ResourceHandle* resource_handle = new DX12ResourceHandle();
+	resource_handle->upload_buffer = upload;
+	resource_handle->default_buffer = target;
+
+	// Barrier - transition target to COPY_DEST
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = resource_handle->default_buffer;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+	barrier.Transition.StateAfter = finalState;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	cmdList->ResourceBarrier(1, &barrier);
+
+	return resource_handle;
+}
+
+void DX12MaterialManager::updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byteSize) {
+	//std::cout << "byteSize: " << byteSize << std::endl;
+
+	void* mapped;
+	resource_handle->upload_buffer->Map(0, nullptr, &mapped); // mapped now points to the upload buffer
+	memcpy(mapped, data, byteSize); // copy data to upload buffer
+	resource_handle->upload_buffer->Unmap(0, nullptr); //
+}
+
+void DX12MaterialManager::pushResourceHandle(DX12ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after) {
+
+	// Barrier - transition target to COPY_DEST
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = resource_handle->default_buffer;
+	barrier.Transition.StateBefore = state_before;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	cmdList->ResourceBarrier(1, &barrier);
+
+	// Copy to GPU
+	cmdList->CopyBufferRegion(resource_handle->default_buffer, 0, resource_handle->upload_buffer, 0, data_size);
+
+	// Barrier - transition to final state
+	barrier.Transition.pResource = resource_handle->default_buffer;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = state_after;
+	cmdList->ResourceBarrier(1, &barrier);
 }
 
 // helper

@@ -19,6 +19,7 @@
 #include "EntityManager.h"
 #include "Vector.h"
 
+#include "DX12Resource.h"
 #include "DX12ResourceManager.h"
 #include "DX12TLASManager.h"
 #include "DX12BLASManager.h"

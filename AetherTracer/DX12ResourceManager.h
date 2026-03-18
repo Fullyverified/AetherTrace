@@ -14,18 +14,10 @@
 #include "EntityManager.h"
 #include "MeshManager.h"
 
+#include "DX12Resource.h"
+
 class DX12ResourceManager {
 public:
-
-	struct ResourceHandle {
-		// for resource that don't need an upload buffer, only the default_buffer is used
-		ID3D12Resource* upload_buffer;
-		ID3D12Resource* default_buffer;
-
-		// offset in the global heap
-		UINT64 heap_index_srv; // or cbv
-		UINT64 heap_index_uav;
-	};
 
 	struct DescriptorAllocator {
 		ID3D12DescriptorHeap* desc_heap;
@@ -55,23 +47,20 @@ public:
 	DX12ResourceManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 	~DX12ResourceManager() {};
 
-	ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
-	void updateResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size);
-	void pushResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
-	void resizeResourceHandle(DX12ResourceManager::ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
-	void createCBV(DX12ResourceManager::ResourceHandle* resource_handle, size_t byte_size);
+	DX12ResourceHandle* createResourceHandle(const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void updateResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size);
+	void pushResourceHandle(DX12ResourceHandle* resource_handle, size_t data_size, D3D12_RESOURCE_STATES state_before, D3D12_RESOURCE_STATES state_after);
+	void resizeResourceHandle(DX12ResourceHandle* resource_handle, const void* data, size_t byte_size, D3D12_RESOURCE_STATES final_state, bool is_UAV);
+	void createCBV(DX12ResourceHandle* resource_handle, size_t byte_size);
 
 	// INIT Resource
 	void createFence(ID3D12Fence*& fence);
 
-	void initAccumulationTexture(ResourceHandle* resource_handle, std::string resource_name);
-	void initRenderTarget(ResourceHandle* resource_handle, std::string resource_name);
+	void initAccumulationTexture(DX12ResourceHandle* resource_handle, std::string resource_name);
+	void initRenderTarget(DX12ResourceHandle* resource_handle, std::string resource_name);
 
 	void initModelBuffers();
 	void initDX12Entites();
-	void initDX12EntityMaterials();
-
-	void initMaterialBuffer(bool is_update);
 
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
@@ -91,74 +80,13 @@ public:
 
 	// RAY TRACING STAGE
 
-	struct DX12Material {
-		DirectX::XMFLOAT3 color;
-		float roughness;
-		float metallic;
-		float ior;
-		float transmission;
-		float emission;
-
-		DX12Material(MaterialManager::Material* material) {
-			color.x = material->color.x;
-			color.y = material->color.y;
-			color.z = material->color.z;
-			roughness = material->roughness;
-			metallic = material->metallic;
-			ior = material->ior;
-			transmission = material->transmission;
-			emission = material->emission;
-		}
-	};
-
-	struct DX12Model {
-		DX12Model() : loadedModel(nullptr), BLAS(nullptr) {};
-
-		MeshManager::LoadedModel* loadedModel; // mesh and raw vertex data
-		ResourceHandle* BLAS;
-
-		std::vector<ResourceHandle*> vertexBuffers;
-		std::vector<ResourceHandle*> indexBuffers;;
-	};
-
-	struct DX12Entity {
-		DX12Entity() : entity(nullptr), model(nullptr) {};
-
-		EntityManager::Entity* entity; // name, position, rotation, scale
-		DX12Model* model;
-		DX12Material* material;
-	};
-
-	struct alignas(256)DX12Camera {
-
-		DX12Camera() : position{} {};
-		DX12Camera(PT::Vector3 position) : position{ position.x, position.y, position.z } {};
-
-		DirectX::XMFLOAT3 position;
-		float pad0;
-
-		DirectX::XMFLOAT4X4 invViewProj;
-		UINT seed;
-		UINT sky;
-		float skyBrighness;
-		UINT minBounces;
-		UINT maxBounces;
-		UINT jitter;
-	};
-
 	// MODEL
-	std::vector<ResourceHandle*> allVertexBuffers;
-	std::vector<ResourceHandle*> allIndexBuffers;
+	std::vector<DX12ResourceHandle*> allVertexBuffers;
+	std::vector<DX12ResourceHandle*> allIndexBuffers;
 
-	ResourceHandle* materialsBuffer;
-	std::vector<DX12Material> dx12Materials;
-	ResourceHandle* materialIndexBuffer;
-	std::vector<uint32_t> materialIndices;
-
-	ResourceHandle* cameraConstantBuffer;
+	DX12ResourceHandle* cameraConstantBuffer;
 
 	// ENTITY / BLAS
-	std::unordered_map<std::string, DX12Material*> dx12materials_map;
 	std::unordered_map<std::string, DX12Model*> dx12Models_map;
 
 	std::vector<DX12Entity*> dx12entities;
@@ -169,14 +97,14 @@ public:
 	//ResourceHandle* tlas_scratch;
 
 	UINT NUM_INSTANCES = 0;
-	ResourceHandle* instances;
+	DX12ResourceHandle* instances;
 	D3D12_RAYTRACING_INSTANCE_DESC* instanceData;
 	std::unordered_map<std::string, uint32_t> uniqueInstancesID;
 	std::unordered_set<std::string> uniqueInstances;
 
 	// COMPUTE STAGE
 
-	ResourceHandle* renderTarget;
+	DX12ResourceHandle* renderTarget;
 
 	struct alignas(256)ToneMappingParams {
 		ToneMappingParams() : stage(0), num_samples(1), white_point(config.whitepoint) {};
@@ -185,14 +113,14 @@ public:
 		UINT num_samples;
 	};
 	ToneMappingParams* toneMappingParams;
-	ResourceHandle* toneMappingConstantBuffer;
-	ResourceHandle* maxLumBuffer;
+	DX12ResourceHandle* toneMappingConstantBuffer;
+	DX12ResourceHandle* maxLumBuffer;
 
 	// SHARED
 
-	ResourceHandle* accumulationTexture;
+	DX12ResourceHandle* accumulationTexture;
 
-	ResourceHandle* randBuffer;
+	DX12ResourceHandle* randBuffer;
 	std::vector<uint64_t> randPattern;
 
 

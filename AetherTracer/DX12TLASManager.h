@@ -12,7 +12,7 @@
 #include "EntityManager.h"
 #include "MeshManager.h"
 
-#include "DX12ResourceManager.h"
+#include "DX12Resource.h"
 
 class DX12TLASManager {
 
@@ -21,18 +21,18 @@ public:
 	DX12TLASManager(MeshManager* meshManager, MaterialManager* materialManager, EntityManager* entityManager, IDXGIFactory4* factory, ID3D12Device5* d3dDevice, ID3D12CommandQueue* cmdQueue, ID3D12CommandAllocator* cmdAlloc, ID3D12GraphicsCommandList4* cmdList);
 	~DX12TLASManager() {};
 
-	void initTopLevelAS(DX12ResourceManager::ResourceHandle* instances);
+	void initTopLevelAS(DX12ResourceHandle* instances);
 
-	void rebuildTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES);
-	void updateTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES);
+	void rebuildTLAS(DX12ResourceHandle* instances, UINT NUM_INSTANCES);
+	void updateTLAS(DX12ResourceHandle* instances, UINT NUM_INSTANCES);
 
 
 	// Utility
 	void checkHR(HRESULT hr, ID3DBlob* errorblob, std::string context);
 	void waitForGPU();
 
-	DX12ResourceManager::ResourceHandle* tlas_scratch;
-	DX12ResourceManager::ResourceHandle* tlas;
+	DX12ResourceHandle* tlas_scratch;
+	DX12ResourceHandle* tlas;
 
 	// inherited from the DX12Renderer -> DX12PathTracerPipeLine -> this
 	IDXGIFactory4* factory;

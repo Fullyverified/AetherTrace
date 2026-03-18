@@ -58,17 +58,15 @@ void DX12PathTracerPipeLine::init() {
 	std::cout << "init surfaces" << std::endl;
 	initSurfaces();
 	
-
 	dx12ResourceManager->cmdAlloc = cmdAlloc;
 	dx12ResourceManager->cmdList = cmdList;
 
 	initImgui();
 
-	dx12ResourceManager->dx12Camera = new DX12ResourceManager::DX12Camera{};
+	dx12ResourceManager->dx12Camera = new DX12Camera{};
 
 	resize();
 
-	
 	std::cout << "init Descriptor Heaps" << std::endl;
 
 	dx12ResourceManager->initDescriptorHeap(dx12ResourceManager->global_descriptor_heap_allocator, 1000, true, "Global Descriptor Heap");
@@ -81,17 +79,18 @@ void DX12PathTracerPipeLine::init() {
 	dx12BLASManager->createModelBLAS(dx12ResourceManager->dx12Models_map);
 	
 	dx12ResourceManager->initDX12Entites();
-	dx12ResourceManager->initDX12EntityMaterials();
-
 
 	dx12TLASManager->initTopLevelAS(dx12ResourceManager->instances);
-	dx12ResourceManager->initMaterialBuffer(false);
+
 	dx12ResourceManager->initVertexIndexBuffers();
 
 	dx12ResourceManager->initRenderTarget(dx12ResourceManager->renderTarget, "Render Target");
 	dx12ResourceManager->updateRand();
 	dx12ResourceManager->updateToneParams();
 	dx12ResourceManager->initMaxLumBuffer();
+
+	dx12MaterialManager->initMaterials(true, true, true);
+	dx12MaterialManager->initMaterialBuffers(false);
 
 	initGlobalDescriptors();
 	initRootSignature();
@@ -102,12 +101,9 @@ void DX12PathTracerPipeLine::init() {
 
 	bindDescriptors();
 
-	dx12MaterialManager->initMaterials(dx12ResourceManager->dx12entities);
-
 	dx12ResourceManager->cmdList->Close();
 	cmdQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList**>(&dx12ResourceManager->cmdList));
 	dx12ResourceManager->waitForGPU();
-
 	dx12ResourceManager->cmdAlloc->Reset();
 	dx12ResourceManager->cmdList->Reset(dx12ResourceManager->cmdAlloc, nullptr);
 
@@ -210,7 +206,7 @@ void DX12PathTracerPipeLine::initRootSignature() {
 
 	if (config.debug) std::cout << "initRTRootSignature()" << std::endl;
 
-	UINT NUM_BUFFERS = static_cast<UINT>(dx12ResourceManager->allVertexBuffers.size());
+	UINT NUM_VERTEX_BUFFERS = static_cast<UINT>(dx12ResourceManager->allVertexBuffers.size());
 
 	D3D12_DESCRIPTOR_RANGE accumRangeUAV = {
 	.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
@@ -265,7 +261,7 @@ void DX12PathTracerPipeLine::initRootSignature() {
 
 	D3D12_DESCRIPTOR_RANGE vertexRange = {
 	.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	.NumDescriptors = NUM_BUFFERS,
+	.NumDescriptors = NUM_VERTEX_BUFFERS,
 	.BaseShaderRegister = 2,
 	.RegisterSpace = 2,
 	.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
@@ -273,7 +269,7 @@ void DX12PathTracerPipeLine::initRootSignature() {
 
 	D3D12_DESCRIPTOR_RANGE indexRange = {
 	.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	.NumDescriptors = NUM_BUFFERS,
+	.NumDescriptors = NUM_VERTEX_BUFFERS,
 	.BaseShaderRegister = 3,
 	.RegisterSpace = 3,
 	.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
@@ -295,6 +291,14 @@ void DX12PathTracerPipeLine::initRootSignature() {
 	.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 	};
 
+	UINT tex_maps_size = dx12MaterialManager->texture_maps.size();
+	D3D12_DESCRIPTOR_RANGE materialTexturesRange = {
+	.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+	.NumDescriptors = tex_maps_size,
+	.BaseShaderRegister = 6,
+	.RegisterSpace = 6,
+	.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+	};
 
 	// CBV for Camera
 	D3D12_ROOT_PARAMETER cameraParam = {};
@@ -310,8 +314,7 @@ void DX12PathTracerPipeLine::initRootSignature() {
 	toneParam.Descriptor.RegisterSpace = 0;
 	toneParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-
-	D3D12_ROOT_PARAMETER params[12] = {												// num desriptor ranges, descriptor range
+	D3D12_ROOT_PARAMETER params[13] = {												// num desriptor ranges, descriptor range
 		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &accumRangeUAV}},
 		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &randRange}},
 		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &rtRange}},
@@ -322,20 +325,37 @@ void DX12PathTracerPipeLine::initRootSignature() {
 		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &indexRange}},
 		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &materialRange}},
 		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &materialIndexRange}},
+		{.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, .DescriptorTable = {1, &materialTexturesRange}},
 		cameraParam,
 		toneParam,
 	};
 
 
-	D3D12_ROOT_SIGNATURE_DESC desc = {
-		.NumParameters = 12,
-		.pParameters = params,
-		.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE
-	};
+	D3D12_STATIC_SAMPLER_DESC sampler = {};
+	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.MipLODBias = 0;
+	sampler.MaxAnisotropy = 16;
+	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+	sampler.MinLOD = 0.0f;
+	sampler.MaxLOD = D3D12_FLOAT32_MAX;
+	sampler.ShaderRegister = 0;
+	sampler.RegisterSpace = 0;
+	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_ROOT_SIGNATURE_DESC rootSigdesc = {};
+	rootSigdesc.NumParameters = 13,
+	rootSigdesc.pParameters = params,
+	rootSigdesc.NumStaticSamplers = 1;
+	rootSigdesc.pStaticSamplers = &sampler;
+	rootSigdesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
 	ID3DBlob* blob;
 	ID3DBlob* errorblob;
-	HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, &errorblob);
+	HRESULT hr = D3D12SerializeRootSignature(&rootSigdesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &blob, &errorblob);
 	checkHR(hr, nullptr, "D3D12SerializeRootSignature: ");
 
 
@@ -492,7 +512,7 @@ void DX12PathTracerPipeLine::initGlobalDescriptors() {
 	//if (config.debug) std::cout << "tlas->heap_index_srv: " << tlas->heap_index_srv << std::endl;
 
 	// Vertex Buffer
-	for (DX12ResourceManager::ResourceHandle* vertexBuffer : dx12ResourceManager->allVertexBuffers) {
+	for (DX12ResourceHandle* vertexBuffer : dx12ResourceManager->allVertexBuffers) {
 		srvDesc = {};
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -508,7 +528,7 @@ void DX12PathTracerPipeLine::initGlobalDescriptors() {
 		//if (config.debug) std::cout << "srvNumElementsVertex: " << srvDesc.Buffer.NumElements << std::endl;
 	}
 	// Vertex Index Buffer
-	for (DX12ResourceManager::ResourceHandle* indexBuffer : dx12ResourceManager->allIndexBuffers) {
+	for (DX12ResourceHandle* indexBuffer : dx12ResourceManager->allIndexBuffers) {
 		srvDesc = {};
 		srvDesc.Format = DXGI_FORMAT_R32_UINT;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -529,12 +549,12 @@ void DX12PathTracerPipeLine::initGlobalDescriptors() {
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.NumElements = static_cast<UINT>(dx12ResourceManager->dx12Materials.size());
-	srvDesc.Buffer.StructureByteStride = sizeof(DX12ResourceManager::DX12Material);
-	d3dDevice->CreateShaderResourceView(dx12ResourceManager->materialsBuffer->default_buffer, &srvDesc, cpuHandle);
+	srvDesc.Buffer.NumElements = static_cast<UINT>(dx12MaterialManager->dx12materials.size());
+	srvDesc.Buffer.StructureByteStride = sizeof(DX12MaterialManager::DX12Material);
+	d3dDevice->CreateShaderResourceView(dx12MaterialManager->materialsBuffer->default_buffer, &srvDesc, cpuHandle);
 
 	cpuHandle.ptr += dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
-	dx12ResourceManager->materialsBuffer->heap_index_srv = dx12ResourceManager->global_descriptor_heap_allocator->alloc();
+	dx12MaterialManager->materialsBuffer->heap_index_srv = dx12ResourceManager->global_descriptor_heap_allocator->alloc();
 
 	// Material Index Buffer
 	srvDesc = {};
@@ -542,17 +562,30 @@ void DX12PathTracerPipeLine::initGlobalDescriptors() {
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.NumElements = static_cast<UINT>((dx12ResourceManager->materialIndexBuffer->default_buffer->GetDesc().Width) / sizeof(uint32_t));
+	srvDesc.Buffer.NumElements = static_cast<UINT>((dx12MaterialManager->materialIndexBuffer->default_buffer->GetDesc().Width) / sizeof(uint32_t));
 	srvDesc.Buffer.StructureByteStride = 0;
-	d3dDevice->CreateShaderResourceView(dx12ResourceManager->materialIndexBuffer->default_buffer, &srvDesc, cpuHandle);
+	d3dDevice->CreateShaderResourceView(dx12MaterialManager->materialIndexBuffer->default_buffer, &srvDesc, cpuHandle);
 
 	cpuHandle.ptr += dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
-	dx12ResourceManager->materialIndexBuffer->heap_index_srv = dx12ResourceManager->global_descriptor_heap_allocator->alloc();
+	dx12MaterialManager->materialIndexBuffer->heap_index_srv = dx12ResourceManager->global_descriptor_heap_allocator->alloc();
 
+	// Material Textures
+	for (DX12ResourceHandle* texture : dx12MaterialManager->texture_maps) {
+		srvDesc = {};
+		srvDesc.Format = texture->default_buffer->GetDesc().Format;
+		srvDesc.Texture2D.MipLevels = texture->default_buffer->GetDesc().MipLevels;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		d3dDevice->CreateShaderResourceView(texture->default_buffer, &srvDesc, cpuHandle);
+
+		cpuHandle.ptr += dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
+		texture->heap_index_srv = dx12ResourceManager->global_descriptor_heap_allocator->alloc();
+		//if (config.debug) std::cout << "srvNumElementsIndex: " << srvDesc.Buffer.NumElements << std::endl;
+	}
 	// Camera CBV
 	cbvDesc = {};
 	cbvDesc.BufferLocation = dx12ResourceManager->cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = sizeof(DX12ResourceManager::DX12Camera);
+	cbvDesc.SizeInBytes = sizeof(DX12Camera);
 
 	d3dDevice->CreateConstantBufferView(&cbvDesc, cpuHandle);
 	cpuHandle.ptr += dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
@@ -639,17 +672,18 @@ void DX12PathTracerPipeLine::bindDescriptors() {
 	gpuHandle.ptr = heap_start + dx12ResourceManager->allIndexBuffers[0]->heap_index_srv * dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
 	dx12ResourceManager->cmdList->SetComputeRootDescriptorTable(7, gpuHandle); // t2 index buffer SRV
 
-	gpuHandle.ptr = heap_start + dx12ResourceManager->materialsBuffer->heap_index_srv * dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
+	gpuHandle.ptr = heap_start + dx12MaterialManager->materialsBuffer->heap_index_srv * dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
 	dx12ResourceManager->cmdList->SetComputeRootDescriptorTable(8, gpuHandle); // t3 material buffer SRV
 
-	gpuHandle.ptr = heap_start + dx12ResourceManager->materialIndexBuffer->heap_index_srv * dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
+	gpuHandle.ptr = heap_start + dx12MaterialManager->materialIndexBuffer->heap_index_srv * dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
 	dx12ResourceManager->cmdList->SetComputeRootDescriptorTable(9, gpuHandle); // t3 material index buffer SRV
 
+	gpuHandle.ptr = heap_start + dx12MaterialManager->texture_maps[0]->heap_index_srv * dx12ResourceManager->global_descriptor_heap_allocator->desc_increment_size;
+	dx12ResourceManager->cmdList->SetComputeRootDescriptorTable(10, gpuHandle); // t3 material index buffer SRV
 
+	dx12ResourceManager->cmdList->SetComputeRootConstantBufferView(11, dx12ResourceManager->cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // b0 camera cbv
 
-	dx12ResourceManager->cmdList->SetComputeRootConstantBufferView(10, dx12ResourceManager->cameraConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // b0 camera cbv
-
-	dx12ResourceManager->cmdList->SetComputeRootConstantBufferView(11, dx12ResourceManager->toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // maxLum, etc
+	dx12ResourceManager->cmdList->SetComputeRootConstantBufferView(12, dx12ResourceManager->toneMappingConstantBuffer->upload_buffer->GetGPUVirtualAddress()); // maxLum, etc
 
 
 }
@@ -677,8 +711,8 @@ void DX12PathTracerPipeLine::render() {
 	}
 
 	if (UI::materialUpdate) {
-		dx12ResourceManager->initDX12EntityMaterials();
-		dx12ResourceManager->initMaterialBuffer(true);
+		dx12MaterialManager->initMaterials(true, true, true);
+		dx12MaterialManager->initMaterialBuffers(true);
 	}
 
 	//dx12ResourceManager->initGlobalDescriptors(dx12AccelerationStructureManager->tlas); // dynamic buffer resizing

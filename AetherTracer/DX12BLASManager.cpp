@@ -6,7 +6,7 @@ DX12BLASManager::DX12BLASManager(MeshManager* meshManager, MaterialManager* mate
 };
 
 
-void DX12BLASManager::createModelBLAS(std::unordered_map<std::string, DX12ResourceManager::DX12Model*> models_map) {
+void DX12BLASManager::createModelBLAS(std::unordered_map<std::string, DX12Model*> models_map) {
 	
 	std::cout << "Begin create model BLAS" << std::endl;
 
@@ -44,7 +44,7 @@ void DX12BLASManager::createModelBLAS(std::unordered_map<std::string, DX12Resour
 
 		std::cout << "making accel struc " << std::endl;
 
-		DX12ResourceManager::ResourceHandle* BLAS = makeAccelerationStructure(inputs);
+		DX12ResourceHandle* BLAS = makeAccelerationStructure(inputs);
 		model->BLAS = BLAS;
 		model->BLAS->default_buffer->SetName(L"Model BLAS");
 
@@ -53,7 +53,7 @@ void DX12BLASManager::createModelBLAS(std::unordered_map<std::string, DX12Resour
 
 }
 
-DX12ResourceManager::ResourceHandle* DX12BLASManager::makeAccelerationStructure(D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs) {
+DX12ResourceHandle* DX12BLASManager::makeAccelerationStructure(D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs) {
 
 	std::cout << "Make Accl Structure" << std::endl;
 
@@ -139,7 +139,7 @@ DX12ResourceManager::ResourceHandle* DX12BLASManager::makeAccelerationStructure(
 
 
 	scratch->Release();
-	DX12ResourceManager::ResourceHandle* resource_handle = new DX12ResourceManager::ResourceHandle{};
+	DX12ResourceHandle* resource_handle = new DX12ResourceHandle{};
 	resource_handle->default_buffer = BLAS;
 	return resource_handle;
 

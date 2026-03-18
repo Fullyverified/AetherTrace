@@ -156,6 +156,7 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="DX12BLASManager.h" />
     <ClInclude Include="DX12MaterialManager.h" />
+    <ClInclude Include="DX12Resource.h" />
     <ClInclude Include="DX12TLASManager.h" />
     <ClInclude Include="DX12PathTracerPipeLine.h" />
     <ClInclude Include="DX12Renderer.h" />
@@ -165,6 +166,7 @@
     <ClInclude Include="MeshManager.h" />
     <ClInclude Include="DX12ResourceManager.h" />
     <ClInclude Include="simdjson.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="Vector.h" />
     <ClInclude Include="Window.h" />

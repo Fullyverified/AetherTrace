@@ -40,6 +40,9 @@
     <Filter Include="Header Files\Vulkan\PathTracer">
       <UniqueIdentifier>{88b90f01-1eb3-453f-8bb8-74ccee9b984c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="stb_image">
+      <UniqueIdentifier>{3ef8664e-c07c-4af8-b3d3-cae919da8013}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -142,6 +145,12 @@
     </ClInclude>
     <ClInclude Include="DX12MaterialManager.h">
       <Filter>Header Files\DX12\PathTracer</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>stb_image</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
