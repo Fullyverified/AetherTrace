@@ -112,6 +112,30 @@ void DX12ResourceManager::initModelBuffers() {
 
 }
 
+void DX12ResourceManager::initVertexIndexBuffers() {
+
+	allVertexBuffers.clear();
+	allIndexBuffers.clear();
+
+	for (auto& [name, model] : dx12Models_map) {
+
+		std::vector<DX12ResourceHandle*> indexBuffers = model->indexBuffers;
+		std::vector<DX12ResourceHandle*> vertexBuffers = model->vertexBuffers;
+
+		size_t bufferSize = indexBuffers.size();
+
+		for (size_t i = 0; i < bufferSize; i++) {
+			allIndexBuffers.push_back(indexBuffers[i]);
+			allVertexBuffers.push_back(vertexBuffers[i]);
+		}
+
+		dx12Models_index_map[name] = static_cast<UINT>(allIndexBuffers.size() - 1);
+		std::cout << name << ": " << "idx: " << dx12Models_index_map[name] << std::endl;
+
+	}
+
+}
+
 void DX12ResourceManager::updateCamera() {
 
 	entityManager->camera->update();
@@ -176,7 +200,7 @@ void DX12ResourceManager::updateCamera() {
 
 }
 
-void DX12ResourceManager::initDX12Entites() {
+void DX12ResourceManager::initDX12Entites(bool is_update) {
 
 	if (config.debug) std::cout << "initScene()" << std::endl;
 
@@ -212,10 +236,12 @@ void DX12ResourceManager::initDX12Entites() {
 	instancesDesc.SampleDesc = NO_AA;
 	instancesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	instances = new DX12ResourceHandle{};
-	HRESULT hr = d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &instancesDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&instances->default_buffer));
-	checkHR(hr, nullptr, "initScene, CreateComittedResource: ");
-
+	if (!is_update) {
+		instances = new DX12ResourceHandle{};
+		HRESULT hr = d3dDevice->CreateCommittedResource(&UPLOAD_HEAP, D3D12_HEAP_FLAG_NONE, &instancesDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&instances->default_buffer));
+		checkHR(hr, nullptr, "initScene, CreateComittedResource: ");
+	}
+	
 	instances->default_buffer->Map(0, nullptr, reinterpret_cast<void**>(&instanceData));
 
 	if (config.debug) std::cout << "init scene" << std::endl;
@@ -223,24 +249,14 @@ void DX12ResourceManager::initDX12Entites() {
 	uint32_t instanceID = -1; // user provided
 	uint32_t instanceIndex = 0;
 
-	uniqueInstancesID.clear();
-
 	for (DX12Entity* dx12Entity : dx12entities) {
 
-		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
-
 		DX12ResourceHandle* objectBlas = dx12Entity->model->BLAS;
-
-		if (uniqueInstancesID.find(dx12Entity->entity->model) == uniqueInstancesID.end()) {
-			instanceID = uniqueInstancesID.size();
-			uniqueInstancesID[dx12Entity->entity->model] = instanceID;
-		}
-		else {
-			instanceID = uniqueInstancesID[dx12Entity->entity->model];
-		}
+		std::cout << dx12Entity->entity->model << std::endl;
+		std::cout << "idx: " << dx12Models_index_map[dx12Entity->entity->model] << std::endl;
 
 		instanceData[instanceIndex] = {
-			.InstanceID = static_cast<UINT>(instanceID),
+			.InstanceID = static_cast<UINT>(dx12Models_index_map[dx12Entity->entity->model]),
 			.InstanceMask = 1,
 			.InstanceContributionToHitGroupIndex = 0,
 			.Flags = 0,
@@ -297,33 +313,6 @@ void DX12ResourceManager::updateTransforms() {
 		XMStoreFloat3x4(ptr, worldTransform);
 
 		currentInstance++;
-
-	}
-
-}
-
-void DX12ResourceManager::initVertexIndexBuffers() {
-
-	allVertexBuffers.clear();
-	allIndexBuffers.clear();
-
-	uniqueInstances.clear();
-	for (DX12Entity* dx12SceneObject : dx12entities) {
-
-
-		if (uniqueInstances.count(dx12SceneObject->entity->model) == 0) {
-
-			uniqueInstances.insert(dx12SceneObject->entity->model);
-			std::vector<DX12ResourceHandle*> indexBuffers = dx12SceneObject->model->indexBuffers;
-			std::vector<DX12ResourceHandle*> vertexBuffers = dx12SceneObject->model->vertexBuffers;
-
-			size_t bufferSize = indexBuffers.size();
-
-			for (size_t i = 0; i < bufferSize; i++) {
-				allIndexBuffers.push_back(indexBuffers[i]);
-				allVertexBuffers.push_back(vertexBuffers[i]);
-			}
-		}
 
 	}
 
@@ -409,7 +398,7 @@ void DX12ResourceManager::rebuildBLAS() {
 	initModelBuffers(); // only if a new unique model is added
 	//initModelBLAS(); // only if a new unique model is added
 
-	initDX12Entites(); // only if a new entity is added
+	initDX12Entites(true); // only if a new entity is added
 
 }
 

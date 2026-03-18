@@ -75,14 +75,16 @@ void DX12PathTracerPipeLine::init() {
 	dx12ResourceManager->updateCamera();
 	dx12ResourceManager->initAccumulationTexture(dx12ResourceManager->accumulationTexture, "Accumulation Texture");
 
-	dx12ResourceManager->initModelBuffers(); // instanced vertex and index buffers
+	dx12ResourceManager->initModelBuffers(); // create each vertex and index buffer for each model
+
 	dx12BLASManager->createModelBLAS(dx12ResourceManager->dx12Models_map);
-	
-	dx12ResourceManager->initDX12Entites();
+
+	dx12ResourceManager->initVertexIndexBuffers(); // instanced buffers
+
+	dx12ResourceManager->initDX12Entites(false);
 
 	dx12TLASManager->initTopLevelAS(dx12ResourceManager->instances);
 
-	dx12ResourceManager->initVertexIndexBuffers();
 
 	dx12ResourceManager->initRenderTarget(dx12ResourceManager->renderTarget, "Render Target");
 	dx12ResourceManager->updateRand();
@@ -426,7 +428,7 @@ void DX12PathTracerPipeLine::initRayTracingPipeline() {
 	};
 
 	D3D12_RAYTRACING_SHADER_CONFIG shaderCfg = {
-	.MaxPayloadSizeInBytes = 76,
+	.MaxPayloadSizeInBytes = 88,
 	.MaxAttributeSizeInBytes = 8, // triangle attribs
 	};
 
@@ -708,7 +710,7 @@ void DX12PathTracerPipeLine::render() {
 			dx12TLASManager->rebuildTLAS(dx12ResourceManager->instances, dx12ResourceManager->NUM_INSTANCES);
 		}
 		else { // update in place
-			dx12ResourceManager->initDX12Entites();
+			dx12ResourceManager->initDX12Entites(true);
 			dx12ResourceManager->updateTransforms();
 			dx12TLASManager->updateTLAS(dx12ResourceManager->instances, dx12ResourceManager->NUM_INSTANCES);
 		}

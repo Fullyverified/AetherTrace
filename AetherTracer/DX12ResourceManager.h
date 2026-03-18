@@ -60,7 +60,7 @@ public:
 	void initRenderTarget(DX12ResourceHandle* resource_handle, std::string resource_name);
 
 	void initModelBuffers();
-	void initDX12Entites();
+	void initDX12Entites(bool is_update);
 
 	void initVertexIndexBuffers();
 	void initMaxLumBuffer();
@@ -88,6 +88,7 @@ public:
 
 	// ENTITY / BLAS
 	std::unordered_map<std::string, DX12Model*> dx12Models_map;
+	std::unordered_map<std::string, UINT> dx12Models_index_map;
 
 	std::vector<DX12Entity*> dx12entities;
 	DX12Camera* dx12Camera;
@@ -99,8 +100,6 @@ public:
 	UINT NUM_INSTANCES = 0;
 	DX12ResourceHandle* instances;
 	D3D12_RAYTRACING_INSTANCE_DESC* instanceData;
-	std::unordered_map<std::string, uint32_t> uniqueInstancesID;
-	std::unordered_set<std::string> uniqueInstances;
 
 	// COMPUTE STAGE
 

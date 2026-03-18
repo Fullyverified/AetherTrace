@@ -159,7 +159,7 @@ void EntityManager::loadScene(std::string scene_name) {
     size_t entity_idx = 0;
     for (auto entity_val : entities_arr) {
 
-        std::cout << "entity_idx: " << entity_idx << std::endl;
+        //std::cout << "entity_idx: " << entity_idx << std::endl;
         entity_idx++;
 
         simdjson::ondemand::object ent_obj;
@@ -222,7 +222,7 @@ void EntityManager::loadScene(std::string scene_name) {
         ent_obj["entity_name"].get_string().get(sv);
         entity->name = sv;
 
-        std::cout << "Entity Name" << entity->name << std::endl;
+        //std::cout << "Entity Name" << entity->name << std::endl;
 
         entities.push_back(entity);
     }

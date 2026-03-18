@@ -154,15 +154,9 @@ void MaterialManager::loadMaterials(std::string material_file_name) {
         material_val["displacement_map"].get_string().get(sv);
         material->displacementMap = sv;
 
-        std::cout << "material name: " << material->name << std::endl;
-        std::cout << "material color: " << material->color.x << ", " << material->color.y << ", " << material->color.z << std::endl;
-        std::cout << "material roughness: " << material->roughness << std::endl;
-        std::cout << "material metallic: " << material->metallic << std::endl;
-
         materials[material->name] = material;
 
     }
-
 
 }
 

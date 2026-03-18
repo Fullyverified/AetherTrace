@@ -17,14 +17,12 @@ void DX12MaterialManager::initMaterials(bool new_material, bool changed_material
 	dx12materials_indices_map.clear();
 	material_indices.clear();
 
-	std::cout << "Creating Materials" << std::endl;
+	std::cout << "Creating DX12 Materials" << std::endl;
 
-	texture_maps.push_back(createTextureFromVector({ 0.0f })); // dummy material in first slot, indice = 0 means no map, use fallback
+	texture_maps.push_back(createTextureFromVector({ 0.0f })); // dummy material in first slot, indice = 0 means no image map, use fallback
 
 	for (auto& [mat_name, material] : materialManager->materials) {
 	
-		std::cout << "Material name: " << mat_name << std::endl;
-
 		// create material if it doesn't already exist
 		if (dx12materials_map.find(mat_name) == dx12materials_map.end()) {
 
@@ -41,7 +39,6 @@ void DX12MaterialManager::initMaterials(bool new_material, bool changed_material
 
 			std::string texture_name;
 
-			std::cout << "albedo texture" << std::endl;
 			// albedo texture
 			texture_name = material->textureMap;
 			if (texture_name == "") {
@@ -59,7 +56,6 @@ void DX12MaterialManager::initMaterials(bool new_material, bool changed_material
 				}
 			}
 			
-			std::cout << "roughness texture" << std::endl;
 			// roughness texture
 			texture_name = material->roughnessMap;
 			if (texture_name == "") {
@@ -77,10 +73,9 @@ void DX12MaterialManager::initMaterials(bool new_material, bool changed_material
 				}
 			}
 
-			std::cout << "metallic texture" << std::endl;
+
 			// metallic texture
 			texture_name = material->metallicMap;
-			std::cout << "metallic map name: " << texture_name << std::endl;
 			if (texture_name == "") {
 				dx12Material->metallicMap = 0; // fallback to raw value
 			}
@@ -103,8 +98,6 @@ void DX12MaterialManager::initMaterials(bool new_material, bool changed_material
 			dx12Material->transmission = material->transmission;
 
 
-
-			std::cout << "emission texture" << std::endl;
 			// emission texture
 			texture_name = material->emissionMap;
 			if (texture_name == "") {
@@ -158,9 +151,6 @@ void DX12MaterialManager::initMaterials(bool new_material, bool changed_material
 
 		UINT material_indice = dx12materials_indices_map[entity->material];
 		material_indices.push_back(material_indice);
-
-		std::cout << "Entity Name: " << entity->name << std::endl;
-		std::cout << "Material Index: " << material_indice << std::endl;
 	}
 
 }
@@ -175,9 +165,7 @@ void DX12MaterialManager::initMaterialBuffers(bool is_update) {
 	size_t index_size_max = config.maxInstances * sizeof(UINT);
 
 	if (!is_update) {
-		std::cout << "materials buffer" << std::endl;
 		materialsBuffer = createResourceHandle(dx12materials.data(), materialsSize, materials_size_max, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, false);
-		std::cout << "material index buffer" << std::endl;
 		materialIndexBuffer = createResourceHandle(material_indices.data(), indexSize, index_size_max, D3D12_RESOURCE_STATE_INDEX_BUFFER, false);
 
 		materialsBuffer->upload_buffer->SetName(L"Materials Upload Buffer");

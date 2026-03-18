@@ -1,14 +1,15 @@
-﻿struct [raypayload] Payload // 76 bytes
+﻿struct [raypayload] Payload // 84 bytes
 {
-    float3 bounce_weight : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float3 emission : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float3 pos : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    float3 dir : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    uint bounceNum : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    bool missed : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    bool internal : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-    uint2 pixelIndex : read(caller, closesthit, miss) : write(caller);
-    uint2 dims : read(caller, closesthit, miss) : write(caller);
+uint64_t state : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+float3 bounce_weight : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+float3 emission : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+float3 pos : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+float3 dir : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+uint bounceNum : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+bool missed : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+bool internal : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+uint2 pixelIndex : read(caller, closesthit, miss) : write(caller);
+uint2 dims : read(caller, closesthit, miss) : write(caller);
 };
 
 struct Vertex
@@ -117,6 +118,7 @@ void RayGeneration()
     ray.TMax = 1e20f;
 
     Payload payload;
+    payload.state = state;
     payload.bounce_weight = float3(1.0f, 1.0f, 1.0f);
     payload.emission = float3(0.0f, 0.0f, 0.0f);
     payload.missed = false;
@@ -147,9 +149,7 @@ void RayGeneration()
         if (i > minBounces)
         {
             float maxComponent = max(throughput.x, max(throughput.y, throughput.z));
-            uint64_t state = randPattern[pixelIndex.x + pixelIndex.y * dims.x];
-            float rand = randomPCG(state);
-            randPattern[payload.pixelIndex.x + payload.pixelIndex.y * payload.dims.x] = state; // write back updated state
+            float rand = randomPCG(payload.state);
             if (rand > maxComponent)
             {
                 finalColor += throughput * payload.bounce_weight * payload.emission;
@@ -167,9 +167,9 @@ void RayGeneration()
         
     }
     
-    
+    randPattern[payload.pixelIndex.x + payload.pixelIndex.y * payload.dims.x] = state; // write back updated state
     accumulationTexture[pixelIndex] += float4(finalColor, 1.0f);
-    }
+}
 
 float3 SampleHemisphere(float a, float b)
 {
@@ -231,7 +231,8 @@ float fresnelSchlickIOR(inout Payload payload, float cos_theta, float ior)
 }
 
 // Visible normal distribution function (VNDF)
-float3 SampleGGX_VNDF(float3 omega_i, float alpha, float3 xi) {
+float3 SampleGGX_VNDF(float3 omega_i, float alpha, float3 xi)
+{
 
     float U1 = xi.x;
     float U2 = xi.y;
@@ -343,7 +344,7 @@ float3 EvalBRDF_GGX(float3 omega_i, float3 omega_o, float alpha, float3 f0, floa
     return (d * g * f) / denom;
 }
 
-float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
 {
     float3 wi = WorldRayDirection() * -1;
     wi = normalize(wi);
@@ -359,7 +360,7 @@ float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worl
     // transform view dir to local space
     float3 viewDirLocal = worldToLocal(wi, onb);
     
-    float2 xi = float2(randomPCG(state), randomPCG(state));
+    float2 xi = float2(randomPCG(payload.state), randomPCG(payload.state));
     
     // sample local outgoing direction
     float3 lightDirLocal = SampleBRDF_GGX(viewDirLocal, alpha, float3(xi.x, xi.y, 0.0f));
@@ -370,7 +371,7 @@ float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worl
     return wo;
 }
 
-float3 specularThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 specularThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
 {
     float3 wo = WorldRayDirection() * -1.0f;
     float3 wi = payload.dir;
@@ -404,13 +405,19 @@ float3 specularThroughput(inout Payload payload, SampledMaterial mat, float3 wor
     // throughput
     float3 throughput = brdf * cosTheta / pdf;
     
-    return throughput;
+    //return throughput;
+    
+    // new alternative?
+    float G1_L = G1_Smith(abs(lightDirLocal.z), alpha);
+    float3 F = fresnelSchlickMetallic(dot(viewDirLocal, normalize(viewDirLocal + lightDirLocal)), f0);
+    
+    return F * G1_L;
 }
 
-float3 diffuseDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 diffuseDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
 {
-    float rand1 = randomPCG(state);
-    float rand2 = randomPCG(state);
+    float rand1 = randomPCG(payload.state);
+    float rand2 = randomPCG(payload.state);
     
     float3 localDir = SampleHemisphere(rand1, rand2);
     float3 worldDir = localToWorld(localDir, BuildONB(worldNormal));
@@ -418,12 +425,12 @@ float3 diffuseDirection(inout Payload payload, SampledMaterial mat, float3 world
     return worldDir;
 }
 
-float3 diffuseThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 diffuseThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
 {
     return mat.color;
 }
 
-float3 refractionDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout bool TIR, inout uint64_t state)
+float3 refractionDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout bool TIR)
 {
     float3 wi = normalize(WorldRayDirection());
 
@@ -454,8 +461,8 @@ float3 refractionDirection(inout Payload payload, SampledMaterial mat, float3 wo
     return refraction;
 }
 
-float3 refractionThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, bool TIR, inout uint64_t state)
-{     
+float3 refractionThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, bool TIR)
+{
     if (TIR)
     {
         return float3(1.0f, 1.0f, 1.0f);
@@ -475,7 +482,7 @@ float3 refractionThroughput(inout Payload payload, SampledMaterial mat, float3 w
     return throughput;
 }
 
-void Shade(inout Payload payload, float2 uv, inout uint64_t state)
+void Shade(inout Payload payload, float2 uv)
 {
     uint instanceIndex = InstanceIndex(); // auto generated
     uint instanceID = InstanceID(); // for vertice/index buffers
@@ -521,14 +528,14 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     // Update ray
     float3 rayPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     
-    payload.pos = rayPos;    
+    payload.pos = rayPos;
     payload.emission = sampled_material.color * sampled_material.emission;
     
     float cosTheta_i = abs(dot(WorldRayDirection(), worldNormal));
     
     // Sample lobe
-    float randomSample = randomPCG(state);
-    float randomSample2 = randomPCG(state);
+    float randomSample = randomPCG(payload.state);
+    float randomSample2 = randomPCG(payload.state);
     float p_specular = lerp(0.04f, 1.0f, sampled_material.metallic);
     float p_transmission = sampled_material.transmission * (1.0f - p_specular);
     float p_diffuse = 1.0f - (p_specular + p_transmission);
@@ -540,30 +547,30 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     // Specular lobe
     if (randomSample <= p_specular)
     {
-        payload.dir = specularDirection(payload, sampled_material, worldNormal, uv, state);
-        payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv, state) * 1.0f / p_specular;
+        payload.dir = specularDirection(payload, sampled_material, worldNormal, uv);
+        payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv) / p_specular;
     }
     // Transmission lobe
     else if (randomSample <= p_specular + p_transmission)
     {
         // Specular (Glass)
         if (randomSample2 < F)
-        { 
-            payload.dir = specularDirection(payload, sampled_material, worldNormal, uv, state);
-            payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv, state) * 1.0f / ((p_specular + p_transmission) * F);
+        {
+            payload.dir = specularDirection(payload, sampled_material, worldNormal, uv);
+            payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv) / (p_transmission * F);
         }
         // Refraction
         else
         {
-            payload.dir = refractionDirection(payload, sampled_material, worldNormal, uv, TIR, state);
-            payload.bounce_weight *= refractionThroughput(payload, sampled_material, worldNormal, uv, TIR, state) * 1.0f / (1.0f - ((p_specular + p_transmission) * F));
+            payload.dir = refractionDirection(payload, sampled_material, worldNormal, uv, TIR);
+            payload.bounce_weight *= refractionThroughput(payload, sampled_material, worldNormal, uv, TIR) / (p_transmission * (1.0f - F));
         }
     }
     // Diffuse lobe
     else if (randomSample <= p_specular + p_transmission + p_diffuse)
     {
-        payload.dir = diffuseDirection(payload, sampled_material, worldNormal, uv, state);
-        payload.bounce_weight *= diffuseThroughput(payload, sampled_material, worldNormal, uv, state) * 1.0f / (p_specular + p_transmission + p_diffuse);
+        payload.dir = diffuseDirection(payload, sampled_material, worldNormal, uv);
+        payload.bounce_weight *= diffuseThroughput(payload, sampled_material, worldNormal, uv) / (p_specular + p_transmission + p_diffuse);
     }
     
     
@@ -573,14 +580,11 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
 [shader("closesthit")]
 void ClosestHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attribs)
 {
-    uint64_t state = randPattern[payload.pixelIndex.x + payload.pixelIndex.y * payload.dims.x];
-    randomPCG(state); // initialize
     
     float2 uv = attribs.barycentrics;
     payload.bounceNum++;
-    Shade(payload, uv, state);
+    Shade(payload, uv);
     
-    randPattern[payload.pixelIndex.x + payload.pixelIndex.y * payload.dims.x] = state; // write back updated state
     return;
 }
 
