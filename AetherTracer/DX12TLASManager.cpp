@@ -18,7 +18,7 @@ void DX12TLASManager::initTopLevelAS(DX12ResourceHandle* instances) {
 	.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
 	.InstanceDescs = instances->default_buffer->GetGPUVirtualAddress() };
 
-	//std::cout << "NUM_INSTANCES = " << NUM_INSTANCES << std::endl;
+	std::cout << "instances width = " << instances->default_buffer->GetDesc().Width / sizeof(D3D12_RAYTRACING_INSTANCE_DESC) << std::endl;
 	std::cout << "MAX_INSTANCES = " << config.maxInstances << std::endl;
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;

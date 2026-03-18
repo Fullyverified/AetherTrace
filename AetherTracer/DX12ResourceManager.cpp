@@ -63,10 +63,14 @@ void DX12ResourceManager::initModelBuffers() {
 
 			size_t vbSize = mesh.vertices.size() * sizeof(MeshManager::Vertex);
 			size_t ibSize = mesh.indices.size() * sizeof(uint32_t);
+
+			size_t vbSizeMax = config.maxInstances * sizeof(MeshManager::Vertex);
+			size_t ibSizeMax = config.maxInstances * sizeof(uint32_t);
+
 			std::cout << ": vbSize=" << vbSize << " bytes, ibSize=" << ibSize << " bytes" << std::endl;
 
 			DX12ResourceHandle *vertexBuffer = createResourceHandle(mesh.vertices.data(), vbSize, vbSize, D3D12_RESOURCE_STATE_COMMON, false);
-			DX12ResourceHandle* indexBuffer = createResourceHandle(mesh.indices.data(), ibSize, vbSize, D3D12_RESOURCE_STATE_COMMON, false);
+			DX12ResourceHandle* indexBuffer = createResourceHandle(mesh.indices.data(), ibSize, ibSize, D3D12_RESOURCE_STATE_COMMON, false);
 
 			vertexBuffer->upload_buffer->SetName(L"Object Vertex Upload Buffer");
 			indexBuffer->upload_buffer->SetName(L"Object Index Upload Buffer");
@@ -97,7 +101,7 @@ void DX12ResourceManager::initModelBuffers() {
 			size_t vbSize = mesh.vertices.size() * sizeof(MeshManager::Vertex);
 			size_t ibSize = mesh.indices.size() * sizeof(uint32_t);
 
-			std::cout << "Mesh " << i << ": vbSize=" << vbSize << " bytes, ibSize=" << ibSize << " bytes\n" << std::endl;
+			std::cout << "Mesh " << i << ": vbSize=" << vbSize << " bytes, ibSize=" << ibSize << " bytes" << std::endl;
 
 			pushResourceHandle(dx12Model->vertexBuffers[i], vbSize, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			pushResourceHandle(dx12Model->indexBuffers[i], ibSize, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -223,8 +227,6 @@ void DX12ResourceManager::initDX12Entites() {
 
 	for (DX12Entity* dx12Entity : dx12entities) {
 
-		std::cout << "DX12Entity model: " << dx12Entity->model->loadedModel->name << std::endl;
-
 		if (dx12Entity->model->BLAS == nullptr) std::cout << "BLAS nullptr " << std::endl;
 
 		DX12ResourceHandle* objectBlas = dx12Entity->model->BLAS;
@@ -252,7 +254,7 @@ void DX12ResourceManager::initDX12Entites() {
 	// to allow easily rebuildable BLAS
 
 	DX12Model* dummyModel = dx12Models_map["cube"];
-
+	
 	for (UINT i = dx12entities.size(); i < config.maxInstances; i++) {
 		
 		instanceData[instanceIndex] = {
@@ -260,7 +262,7 @@ void DX12ResourceManager::initDX12Entites() {
 			.InstanceMask = 0,
 			.InstanceContributionToHitGroupIndex = 0,
 			.Flags = 0,
-			//.AccelerationStructure = dummyModel->BLAS->default_buffer->GetGPUVirtualAddress(),
+			.AccelerationStructure = dummyModel->BLAS->default_buffer->GetGPUVirtualAddress(),
 		};
 
 		instanceIndex++;
