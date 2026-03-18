@@ -8,8 +8,8 @@ A DX12 Path Tracer.
 <img width="1532" height="1440" alt="head of david" src="https://github.com/user-attachments/assets/99fd2c93-ff40-4e29-9912-0718d2dd07e9" />
 
 # To do
-Architecture Refactor  
-Texture support  
+Architecture Refactor *50% Done*  
+~~Texture support~~  
 NEE  
 MIS  
 Blue Noise  
