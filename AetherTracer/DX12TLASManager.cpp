@@ -4,10 +4,10 @@ DX12TLASManager::DX12TLASManager(MeshManager* meshManager, MaterialManager* mate
 	: meshManager(meshManager), materialManager(materialManager), entityManager(entityManager), factory(factory), d3dDevice(d3dDevice), cmdQueue(cmdQueue), cmdAlloc(cmdAlloc), cmdList(cmdList) {
 };
 
-void DX12TLASManager::initTopLevelAS(DX12ResourceManager::ResourceHandle* instances) {
-
-	tlas_scratch = new DX12ResourceManager::ResourceHandle{};
-	tlas = new DX12ResourceManager::ResourceHandle{};
+void DX12TLASManager::initTopLevelAS(DX12ResourceHandle* instances) {
+	
+	tlas_scratch = new DX12ResourceHandle{};
+	tlas = new DX12ResourceHandle{};
 
 	if (config.debug) std::cout << "initTopLevel()" << std::endl;
 
@@ -65,14 +65,14 @@ void DX12TLASManager::initTopLevelAS(DX12ResourceManager::ResourceHandle* instan
 	delete tlas_scratch;
 }
 
-void DX12TLASManager::rebuildTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES) {
+void DX12TLASManager::rebuildTLAS(DX12ResourceHandle* instances, UINT NUM_INSTANCES) {
 
 }
 
-void DX12TLASManager::updateTLAS(DX12ResourceManager::ResourceHandle* instances, UINT NUM_INSTANCES) {
+void DX12TLASManager::updateTLAS(DX12ResourceHandle* instances, UINT NUM_INSTANCES) {
 
 	// Update exisitng TLAS
-	tlas_scratch = new DX12ResourceManager::ResourceHandle{};
+	tlas_scratch = new DX12ResourceHandle{};
 
 	if (config.debug) std::cout << "initTopLevel()" << std::endl;
 

@@ -4,6 +4,9 @@
 #include <fstream>
 #include <string>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 void MaterialManager::createMaterial() {
 
     Material* new_material = new Material{};
@@ -14,12 +17,11 @@ void MaterialManager::createMaterial() {
     new_material->metallic = 0.0f;
     new_material->ior = 0.0f;
     new_material->transmission = 0.0f;
-
     materials["New Material"] = new_material;
+
 }
 
 void MaterialManager::loadMaterials(std::string material_file_name) {
-
 
     std::string filepath = "assets/materials/" + material_file_name + ".json";
 
@@ -158,6 +160,7 @@ void MaterialManager::loadMaterials(std::string material_file_name) {
         std::cout << "material metallic: " << material->metallic << std::endl;
 
         materials[material->name] = material;
+
     }
 
 
@@ -183,13 +186,13 @@ void MaterialManager::saveMaterials(std::string material_file_name) {
         }
         first_material = false;
         builder.start_object();
-        // mesh_name
+        // material_name
         builder.escape_and_append_with_quotes("material_name");
         builder.append_colon();
         builder.escape_and_append_with_quotes(material->name);
         // comma
         builder.append_comma();
-        // position
+        // color
         builder.escape_and_append_with_quotes("color");
         builder.append_colon();
         builder.start_array();
@@ -284,6 +287,8 @@ void MaterialManager::saveMaterials(std::string material_file_name) {
 
 void MaterialManager::initDefaultMaterials() {
 
+    loadTextures();
+
     loadMaterials("default_materials");
 
     if (materials.empty()) {
@@ -308,22 +313,127 @@ void MaterialManager::initDefaultMaterials() {
 	
 }
 
-void MaterialManager::initTextures() {
+void MaterialManager::loadTextureFromFile(std::string fileName) {
 
-	// portal cube
-	albedos["Weighted Cube"] = "weighted_cube_texture.png";
-	albedos["Companion Cube"] = "companion_cube_texture.png";
-	emissive["Weighted Cube"] = "weighted_cube_emission.png";
-	emissive["Companion Cube"] = "companion_cube_emission.png";
+    std::string filepath = "assets/textures/" + fileName + ".png";
 
-	// portal button
-	albedos["Button"] = "button_texture.png";
+    int width, height, channels;
+    unsigned char* data = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
 
-	// portal gun
-	albedos["Portal Gun"] = "portal_gun_texture.png";
-	roughness["Portal Gun"] = "portal_gun_rough.png";
-	metallic["Portal Gun"] = "portal_gun_metallic.png";
-	emissive["Portal Gun"] = "portal_gun_emission.png";
-	normal["Portal Gun"] = "portal_gun_normal.png";
+    Texture* texture = new Texture{};
+    texture->width = width;
+    texture->height = height;
+    texture->channels = channels;
+    texture->data = data;
 
+    textures[fileName] = texture;
+}
+
+void MaterialManager::saveTextures() {
+
+
+    simdjson::builder::string_builder builder(64 * 1024);
+
+    builder.start_object();
+
+    // Entities
+    builder.escape_and_append_with_quotes("textures");
+    builder.append_colon();
+    builder.start_array();
+    bool first_texture = true;
+    for (const auto& [name, texture] : textures) {
+
+        if (!first_texture) {
+            builder.append_comma();
+        }
+        first_texture = false;
+        builder.start_object();
+        // texture_name
+        builder.escape_and_append_with_quotes("texture_name");
+        builder.append_colon();
+        builder.escape_and_append_with_quotes(name);
+        builder.end_object();
+    }
+    builder.end_array();
+    builder.end_object();
+    std::string_view json_view = builder;
+    std::string fileName = "textures";
+    std::string filepath = "assets/textures/" + fileName + ".json";
+
+    std::ofstream out(filepath, std::ios::binary);
+    if (out) {
+        out.write(json_view.data(), json_view.size());
+    }
+
+}
+
+void MaterialManager::loadTextures() {
+
+    std::string fileName = "textures";
+    std::string filepath = "assets/textures/" + fileName + ".json";
+
+    std::ifstream in(filepath, std::ios::binary | std::ios::ate);
+
+    if (!in) {
+        std::cout << "incorrect file name or path" << std::endl;
+        return;
+    }
+
+    size_t size = in.tellg();
+    in.seekg(0, std::ios::beg);
+
+    std::string buffer(size, ' ');
+    in.read(buffer.data(), size);
+
+    // parse
+    simdjson::ondemand::parser parser;
+    simdjson::padded_string padded = simdjson::padded_string(std::move(buffer));
+
+    simdjson::ondemand::document doc;
+    auto error = parser.iterate(padded).get(doc);
+    if (error) {
+        std::cout << "Parsing error: " << error << std::endl;
+        return;
+    }
+
+    simdjson::ondemand::object root;
+    error = doc.get_object().get(root);
+    if (error) {
+        std::cout << "Error getting root object: " << error << std::endl;
+        return;
+    }
+
+    // textures
+    simdjson::ondemand::array textures_arr;
+    error = root["textures"].get_array().get(textures_arr);
+    if (error) {
+        std::cout << "Error getting textures array: " << error << std::endl;
+        return;
+    }
+
+    textures.clear();
+
+    std::string_view sv;
+    double val;
+    size_t idx;
+
+    size_t texture_idx = 0;
+    for (auto texture_val : textures_arr) {
+
+        std::cout << "texture_idx: " << texture_idx << std::endl;
+        texture_idx++;
+
+        simdjson::ondemand::object texture_obj;
+        texture_val.get_object().get(texture_obj);
+
+        std::string name;
+
+        // material name
+        texture_val["texture_name"].get_string().get(sv);
+        name = sv;
+
+        loadTextureFromFile(name);
+
+    }
+    
 }

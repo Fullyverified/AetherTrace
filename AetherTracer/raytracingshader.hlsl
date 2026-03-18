@@ -20,6 +20,21 @@ struct Vertex
 };
 struct Material
 {
+    uint textureMap; // index to map buffer
+    float3 albedo; // raw value
+    uint roughnessMap;
+    float roughness;
+    uint metallicMap;
+    float metallic;
+    float ior;
+    float transmission;
+    uint emissionMap;
+    float emission;
+    uint normalMap;
+    uint displacementMap;
+};
+struct SampledMaterial
+{
     float3 color;
     float roughness;
     float metallic;
@@ -39,6 +54,9 @@ Buffer<uint> IndexBuffers[] : register(t3, space3);
 
 StructuredBuffer<Material> Materials : register(t4, space4);
 Buffer<uint> materialIndexBuffer : register(t5, space5);
+
+Texture2D<float4> textures[] : register(t6, space6);
+SamplerState g_sampler : register(s0);
 
 cbuffer Camerab : register(b0)
 {
@@ -325,7 +343,7 @@ float3 EvalBRDF_GGX(float3 omega_i, float3 omega_o, float alpha, float3 f0, floa
     return (d * g * f) / denom;
 }
 
-float3 specularDirection(inout Payload payload, Material mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
 {
     float3 wi = WorldRayDirection() * -1;
     wi = normalize(wi);
@@ -352,7 +370,7 @@ float3 specularDirection(inout Payload payload, Material mat, float3 worldNormal
     return wo;
 }
 
-float3 specularThroughput(inout Payload payload, Material mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 specularThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
 {
     float3 wo = WorldRayDirection() * -1.0f;
     float3 wi = payload.dir;
@@ -389,7 +407,7 @@ float3 specularThroughput(inout Payload payload, Material mat, float3 worldNorma
     return throughput;
 }
 
-float3 diffuseDirection(inout Payload payload, Material mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 diffuseDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
 {
     float rand1 = randomPCG(state);
     float rand2 = randomPCG(state);
@@ -400,12 +418,12 @@ float3 diffuseDirection(inout Payload payload, Material mat, float3 worldNormal,
     return worldDir;
 }
 
-float3 diffuseThroughput(inout Payload payload, Material mat, float3 worldNormal, float2 uv, inout uint64_t state)
+float3 diffuseThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout uint64_t state)
 {
     return mat.color;
 }
 
-float3 refractionDirection(inout Payload payload, Material mat, float3 worldNormal, float2 uv, inout bool TIR, inout uint64_t state)
+float3 refractionDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, inout bool TIR, inout uint64_t state)
 {
     float3 wi = normalize(WorldRayDirection());
 
@@ -436,7 +454,7 @@ float3 refractionDirection(inout Payload payload, Material mat, float3 worldNorm
     return refraction;
 }
 
-float3 refractionThroughput(inout Payload payload, Material mat, float3 worldNormal, float2 uv, bool TIR, inout uint64_t state)
+float3 refractionThroughput(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv, bool TIR, inout uint64_t state)
 {     
     if (TIR)
     {
@@ -484,23 +502,37 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     
     // Fetch material
     uint matID = materialIndexBuffer[instanceIndex];
-    Material mat = Materials[matID];
+    Material material = Materials[matID];
     
+    SampledMaterial sampled_material;
+    
+    float2 tex_coord = v0.texcoord * uv0 + v1.texcoord * uv.x + v2.texcoord * uv.y;
+    
+    sampled_material.color = material.textureMap == 0 ? material.albedo : textures[NonUniformResourceIndex(material.textureMap)].SampleLevel(g_sampler, tex_coord, 0).xyz;
+    sampled_material.roughness = material.roughnessMap == 0 ? material.roughness : textures[NonUniformResourceIndex(material.roughnessMap)].SampleLevel(g_sampler, tex_coord, 0).x;
+    sampled_material.metallic = material.metallicMap == 0 ? material.metallic : textures[NonUniformResourceIndex(material.metallicMap)].SampleLevel(g_sampler, tex_coord, 0).x;
+    sampled_material.ior = material.ior;
+    sampled_material.transmission = material.transmission;
+    sampled_material.emission = material.emissionMap == 0 ? material.emission : textures[NonUniformResourceIndex(material.emissionMap)].SampleLevel(g_sampler, tex_coord, 0).x * material.emission;
+    
+    //float3 tri_normal = textures[material.normalMap].SampleLevel(g_sampler, uv, 0);
+    //float3 mat_displacement = textures[mat.metallicMap].SampleLevel(g_sampler, uv, 0);
+  
     // Update ray
     float3 rayPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     
     payload.pos = rayPos;    
-    payload.emission = mat.color * mat.emission;
+    payload.emission = sampled_material.color * sampled_material.emission;
     
     float cosTheta_i = abs(dot(WorldRayDirection(), worldNormal));
     
     // Sample lobe
     float randomSample = randomPCG(state);
     float randomSample2 = randomPCG(state);
-    float p_specular = lerp(0.04f, 1.0f, mat.metallic);
-    float p_transmission = mat.transmission * (1.0f - p_specular);
+    float p_specular = lerp(0.04f, 1.0f, sampled_material.metallic);
+    float p_transmission = sampled_material.transmission * (1.0f - p_specular);
     float p_diffuse = 1.0f - (p_specular + p_transmission);
-    float F = fresnelSchlickIOR(payload, cosTheta_i, mat.ior);
+    float F = fresnelSchlickIOR(payload, cosTheta_i, sampled_material.ior);
     
     // Lobe selection
     bool TIR = false;
@@ -508,8 +540,8 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
     // Specular lobe
     if (randomSample <= p_specular)
     {
-        payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
-        payload.bounce_weight *= specularThroughput(payload, mat, worldNormal, uv, state) * 1.0f / p_specular;
+        payload.dir = specularDirection(payload, sampled_material, worldNormal, uv, state);
+        payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv, state) * 1.0f / p_specular;
     }
     // Transmission lobe
     else if (randomSample <= p_specular + p_transmission)
@@ -517,21 +549,21 @@ void Shade(inout Payload payload, float2 uv, inout uint64_t state)
         // Specular (Glass)
         if (randomSample2 < F)
         { 
-            payload.dir = specularDirection(payload, mat, worldNormal, uv, state);
-            payload.bounce_weight *= specularThroughput(payload, mat, worldNormal, uv, state) * 1.0f / ((p_specular + p_transmission) * F);
+            payload.dir = specularDirection(payload, sampled_material, worldNormal, uv, state);
+            payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv, state) * 1.0f / ((p_specular + p_transmission) * F);
         }
         // Refraction
         else
         {
-            payload.dir = refractionDirection(payload, mat, worldNormal, uv, TIR, state);
-            payload.bounce_weight *= refractionThroughput(payload, mat, worldNormal, uv, TIR, state) * 1.0f / (1.0f - ((p_specular + p_transmission) * F));
+            payload.dir = refractionDirection(payload, sampled_material, worldNormal, uv, TIR, state);
+            payload.bounce_weight *= refractionThroughput(payload, sampled_material, worldNormal, uv, TIR, state) * 1.0f / (1.0f - ((p_specular + p_transmission) * F));
         }
     }
     // Diffuse lobe
     else if (randomSample <= p_specular + p_transmission + p_diffuse)
     {
-        payload.dir = diffuseDirection(payload, mat, worldNormal, uv, state);
-        payload.bounce_weight *= diffuseThroughput(payload, mat, worldNormal, uv, state) * 1.0f / (p_specular + p_transmission + p_diffuse);
+        payload.dir = diffuseDirection(payload, sampled_material, worldNormal, uv, state);
+        payload.bounce_weight *= diffuseThroughput(payload, sampled_material, worldNormal, uv, state) * 1.0f / (p_specular + p_transmission + p_diffuse);
     }
     
     

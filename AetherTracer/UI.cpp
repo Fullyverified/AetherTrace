@@ -72,7 +72,7 @@ void UI::renderSettings() {
         accumulationUpdate = true;
     }
 
-    // Drop down list of materials
+    // Drop down list of tone mappers
 
     const char* tone_mappers[] = { "Reinhard Extended", "Hable Filmic", "Aces Filmic" };
 

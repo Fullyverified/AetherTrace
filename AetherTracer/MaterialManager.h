@@ -5,6 +5,7 @@
 #include <string>
 #include "Vector.h"
 
+
 class MaterialManager {
 
 public:
@@ -25,6 +26,13 @@ public:
 		std::string displacementMap;
 	};
 
+	struct Texture {
+		std::string name;
+		int width, height, channels;
+		unsigned char* data;
+
+	};
+
 	MaterialManager() {};
 	~MaterialManager() {
 		cleanUp();
@@ -38,7 +46,10 @@ public:
 
 	void initDefaultMaterials();
 
-	void initTextures();
+	void loadTextures();
+	void saveTextures();
+	
+	void loadTextureFromFile(std::string path);
 
 	void cleanUp() {
 		for (auto const& [name, material] : materials) {
@@ -49,13 +60,6 @@ public:
 	}
 
 	std::unordered_map<std::string, Material*> materials;
-
-	// name -> relative path
-	// model "button" = "button_albedo.png"
-	std::unordered_map<std::string, std::string> albedos;
-	std::unordered_map<std::string, std::string> roughness;
-	std::unordered_map<std::string, std::string> metallic;
-	std::unordered_map<std::string, std::string> emissive;
-	std::unordered_map<std::string, std::string> normal;
+	std::unordered_map<std::string, Texture*> textures;
 };
 
