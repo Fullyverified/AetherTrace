@@ -108,7 +108,7 @@ public:
 	}
 
 	void init();
-	void initSurfaces();
+	void initSwapchain();
 	void resize();
 	void initCommand();
 	void createFence(ID3D12Fence*& fence);

@@ -34,8 +34,6 @@ void DX12PathTracerPipeLine::init() {
 
 	hwnd = static_cast<HWND>(window->getNativeHandle());
 
-	std::cout << "Create Fence" << std::endl;
-
 	std::cout << "init command allocator" << std::endl;
 	initCommand();
 
@@ -47,6 +45,11 @@ void DX12PathTracerPipeLine::init() {
 
 	dx12MaterialManager = new DX12MaterialManager(meshManager, materialManager, entityManager, factory, d3dDevice, cmdQueue, cmdAlloc, cmdList);
 
+	RECT rect;
+	GetClientRect(hwnd, &rect);
+	dx12ResourceManager->width = std::max<UINT>(rect.right - rect.left, 1);
+	dx12ResourceManager->height = std::max<UINT>(rect.bottom - rect.top, 1);
+
 	createFence(dx12ResourceManager->fence);
 	createFence(dx12TLASManager->fence);
 	createFence(dx12BLASManager->fence);
@@ -55,17 +58,11 @@ void DX12PathTracerPipeLine::init() {
 
 	loadShaders();
 
-	std::cout << "init surfaces" << std::endl;
-	initSurfaces();
+	initSwapchain();
 	
-	dx12ResourceManager->cmdAlloc = cmdAlloc;
-	dx12ResourceManager->cmdList = cmdList;
-
 	initImgui();
 
 	dx12ResourceManager->dx12Camera = new DX12Camera{};
-
-	resize();
 
 	std::cout << "init Descriptor Heaps" << std::endl;
 
@@ -73,7 +70,9 @@ void DX12PathTracerPipeLine::init() {
 
 	std::cout << "init RTResources" << std::endl;
 	dx12ResourceManager->updateCamera();
-	dx12ResourceManager->initAccumulationTexture(dx12ResourceManager->accumulationTexture, "Accumulation Texture");
+
+	dx12ResourceManager->initRenderTexture(dx12ResourceManager->renderTarget, DXGI_FORMAT_R8G8B8A8_UNORM, "Render Target", false); //
+	dx12ResourceManager->initRenderTexture(dx12ResourceManager->accumulationTexture, DXGI_FORMAT_R32G32B32A32_FLOAT, "Accumulation Texture", false); //
 
 	dx12ResourceManager->initModelBuffers(); // create each vertex and index buffer for each model
 
@@ -85,9 +84,7 @@ void DX12PathTracerPipeLine::init() {
 
 	dx12TLASManager->initTopLevelAS(dx12ResourceManager->instances);
 
-
-	dx12ResourceManager->initRenderTarget(dx12ResourceManager->renderTarget, "Render Target");
-	dx12ResourceManager->updateRand();
+	dx12ResourceManager->updateRand(false);
 	dx12ResourceManager->updateToneParams();
 	dx12ResourceManager->initMaxLumBuffer();
 
@@ -124,7 +121,7 @@ void DX12PathTracerPipeLine::createFence(ID3D12Fence*& fence) {
 
 // swap chain
 
-void DX12PathTracerPipeLine::initSurfaces() {
+void DX12PathTracerPipeLine::initSwapchain() {
 
 	// 8-bit SRGB
 	// alternative: R16G16B16A16_FLOAT for HDR
@@ -150,39 +147,28 @@ void DX12PathTracerPipeLine::initSurfaces() {
 
 // render target
 void DX12PathTracerPipeLine::resize() {
-
-	std::cout << "Resize called" << std::endl;
-	if (!dx12ResourceManager->swapChain) {
-		std::cout << "Resize: swapChain is null - skipping" << std::endl;
-		return;
-	}
+	std::cout << "resize" << std::endl;
 
 	RECT rect;
 	GetClientRect(hwnd, &rect);
 	dx12ResourceManager->width = std::max<UINT>(rect.right - rect.left, 1);
 	dx12ResourceManager->height = std::max<UINT>(rect.bottom - rect.top, 1);
 
-	std::cout << "wait for gpu" << std::endl;
-
 	dx12ResourceManager->waitForGPU();
-	std::cout << "wait for gpu" << std::endl;
 
 	dx12ResourceManager->swapChain->ResizeBuffers(0, dx12ResourceManager->width, dx12ResourceManager->height, DXGI_FORMAT_UNKNOWN, 0);
 
 	// Update render target and accumulation texture
+	//dx12ResourceManager->initRenderTexture(dx12ResourceManager->renderTarget, DXGI_FORMAT_R8G8B8A8_UNORM, "Render Target", true);
+	//dx12ResourceManager->initRenderTexture(dx12ResourceManager->accumulationTexture, DXGI_FORMAT_R32G32B32A32_FLOAT, "Accumulation Texture", true);
+	//initGlobalDescriptors();
+	//bindDescriptors();
 	
-	if (dx12ResourceManager->renderTarget) {
-		dx12ResourceManager->randPattern.resize(dx12ResourceManager->width * dx12ResourceManager->height);
-	}
 
-	
 	createBackBufferRTVs();
 
-	if (dx12ResourceManager->renderTarget) {
-		dx12ResourceManager->randPattern.resize(dx12ResourceManager->width * dx12ResourceManager->height);
-	}
+	//dx12ResourceManager->updateRand(true);
 
-	std::cout << "resize" << std::endl;
 }
 
 // command list and allocator

@@ -8,7 +8,7 @@
 #include <dxgi1_4.h>
 #include <d3dcompiler.h> // for compiling shaders
 #pragma comment(lib, "d3d12")
-#pragma comment(lib, "dxgi")
+#pragma comment(lib, "dxgi") 
 
 #include "MaterialManager.h"
 #include "EntityManager.h"
@@ -56,8 +56,7 @@ public:
 	// INIT Resource
 	void createFence(ID3D12Fence*& fence);
 
-	void initAccumulationTexture(DX12ResourceHandle* resource_handle, std::string resource_name);
-	void initRenderTarget(DX12ResourceHandle* resource_handle, std::string resource_name);
+	void initRenderTexture(DX12ResourceHandle* resource_handle, DXGI_FORMAT format, std::string resource_name, bool is_resize);
 
 	void initModelBuffers();
 	void initDX12Entites(bool is_update);
@@ -68,7 +67,7 @@ public:
 	void updateToneParams();
 	void updateCamera();
 	void updateTransforms();
-	void updateRand();
+	void updateRand(bool is_resize);
 
 	void initDescriptorHeap(DX12ResourceManager::DescriptorAllocator* descriptorAllocator, UINT num_descriptors, bool is_shader_visible, std::string descriptor_name);
 

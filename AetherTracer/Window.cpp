@@ -64,9 +64,9 @@ void Window::pollEvents(SDL_Event& event) {
     if (event.type == SDL_EVENT_QUIT) {
         m_shouldClose = true;
     }
-    else if (event.type == SDL_EVENT_WINDOW_RESIZED ||
-        event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+    else if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         m_resizedFlag = true;
+        std::cout << "resized" << std::endl;
     }
 
 }

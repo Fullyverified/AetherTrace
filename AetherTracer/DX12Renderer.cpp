@@ -62,5 +62,4 @@ void DX12Renderer::resize() {
 
 	dx12PathTracerPipeLine->resize();
 
-	
 }

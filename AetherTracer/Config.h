@@ -17,8 +17,8 @@ struct Config {
     uint32_t resY = 1440;
     uint32_t internal_resX = 0;
     uint32_t internal_resY = 0;
-    float aspectX = 21;
-    float aspectY = 9;
+    float aspectX = 1;
+    float aspectY = 1;
 
     // Multiple Importance Sampling
     int raysPerPixel = 1;

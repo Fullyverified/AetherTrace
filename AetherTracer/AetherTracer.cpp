@@ -30,6 +30,11 @@ void AetherTracer::run() {
 			// handle input
 			window->pollEvents(event);
 			inputManager->processInput(event);
+
+			if (window->wasResized()) {
+				dx12Renderer->resize();
+				window->acknowledgeResize();
+			}
 		}
 		inputManager->processInputContinuous(event, std::chrono::duration<double>(deltaTime).count());
 
@@ -39,11 +44,6 @@ void AetherTracer::run() {
 		updateConfig();
 
 		renderImgui();
-
-		if (window->wasResized()) {
-			dx12Renderer->resize();
-			window->acknowledgeResize();
-		}
 
 		dx12Renderer->render();
 		dx12Renderer->present();

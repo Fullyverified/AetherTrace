@@ -158,7 +158,7 @@ void DX12ResourceManager::updateCamera() {
 	PT::Vector3 forward = entityCamera->forward;
 	float fovYDegrees = entityCamera->fovYDegrees;
 	float fovYRad = XMConvertToRadians(fovYDegrees);
-	float aspect = entityCamera->aspect;
+	float aspect = static_cast<float>(width) / static_cast<float>(height);
 
 
 	XMFLOAT3 pos = { position.x, position.y, position.z };
@@ -318,7 +318,7 @@ void DX12ResourceManager::updateTransforms() {
 
 }
 
-void DX12ResourceManager::updateRand() {
+void DX12ResourceManager::updateRand(bool is_resize) {
 
 	std::cout << "update rand" << std::endl;
 
@@ -349,10 +349,13 @@ void DX12ResourceManager::updateRand() {
 	}
 
 	size_t randSize = randPattern.size() * sizeof(uint64_t);
+
 	randBuffer = createResourceHandle(randPattern.data(), randSize, randSize, D3D12_RESOURCE_STATE_COMMON, true);
 	randBuffer->default_buffer->SetName(L"rng Defaut Buffer");
+	
 	pushResourceHandle(randBuffer, randSize, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
+	
 }
 
 void DX12ResourceManager::initMaxLumBuffer() {
@@ -404,31 +407,11 @@ void DX12ResourceManager::rebuildBLAS() {
 
 // utility
 
-void DX12ResourceManager::initRenderTarget(DX12ResourceHandle* resource_handle, std::string resource_name) {
+void DX12ResourceManager::initRenderTexture(DX12ResourceHandle* resource_handle, DXGI_FORMAT format, std::string resource_name, bool is_resize) {
 
-	std::cout << "initRenderTarget" << std::endl;
-
-	D3D12_RESOURCE_DESC rtDesc = {
-	   .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-	   .Width = width,
-	   .Height = height,
-	   .DepthOrArraySize = 1,
-	   .MipLevels = 1,
-	   .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-	   .SampleDesc = NO_AA,
-	   .Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS };
-
-	HRESULT hr = d3dDevice->CreateCommittedResource(&DEFAULT_HEAP, D3D12_HEAP_FLAG_NONE, &rtDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&resource_handle->default_buffer));
-	checkHR(hr, nullptr, "Create render target");
-
-	//renderTarget->default_buffer->SetName(resource_name);
-
-	// move to a resize call
-	randPattern.resize(width * height);
-
-}
-
-void DX12ResourceManager::initAccumulationTexture(DX12ResourceHandle* resource_handle, std::string resource_name) {
+	if (is_resize) {
+		resource_handle->default_buffer->Release();
+	}
 
 	D3D12_RESOURCE_DESC accumDesc = {};
 	accumDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -436,7 +419,7 @@ void DX12ResourceManager::initAccumulationTexture(DX12ResourceHandle* resource_h
 	accumDesc.Height = height;
 	accumDesc.DepthOrArraySize = 1;
 	accumDesc.MipLevels = 1;
-	accumDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	accumDesc.Format = format;
 	accumDesc.SampleDesc = NO_AA;
 	accumDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
@@ -444,7 +427,6 @@ void DX12ResourceManager::initAccumulationTexture(DX12ResourceHandle* resource_h
 	checkHR(hr, nullptr, "Create accumulation texture");
 	
 	//resource_handle->default_buffer->SetName(resource_name);
-
 }
 
 DX12ResourceHandle* DX12ResourceManager::createResourceHandle(const void* data, size_t byte_size, size_t max_size, D3D12_RESOURCE_STATES finalState, bool UAV) {
