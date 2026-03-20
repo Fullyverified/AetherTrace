@@ -414,7 +414,7 @@ void DX12PathTracerPipeLine::initRayTracingPipeline() {
 	};
 
 	D3D12_RAYTRACING_SHADER_CONFIG shaderCfg = {
-	.MaxPayloadSizeInBytes = 88,
+	.MaxPayloadSizeInBytes = 64,
 	.MaxAttributeSizeInBytes = 8, // triangle attribs
 	};
 

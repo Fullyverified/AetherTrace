@@ -1,15 +1,12 @@
-﻿struct [raypayload] Payload // 84 bytes
+﻿struct [raypayload] Payload // 64 bytes
 {
 uint64_t state : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-float3 bounce_weight : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+float3 throughput : read(caller, closesthit, miss) : write(caller, closesthit, miss);
 float3 emission : read(caller, closesthit, miss) : write(caller, closesthit, miss);
 float3 pos : read(caller, closesthit, miss) : write(caller, closesthit, miss);
 float3 dir : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-uint bounceNum : read(caller, closesthit, miss) : write(caller, closesthit, miss);
 bool missed : read(caller, closesthit, miss) : write(caller, closesthit, miss);
 bool internal : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-uint2 pixelIndex : read(caller, closesthit, miss) : write(caller);
-uint2 dims : read(caller, closesthit, miss) : write(caller);
 };
 
 struct Vertex
@@ -119,15 +116,11 @@ void RayGeneration()
 
     Payload payload;
     payload.state = state;
-    payload.bounce_weight = float3(1.0f, 1.0f, 1.0f);
+    payload.throughput = float3(1.0f, 1.0f, 1.0f);
     payload.emission = float3(0.0f, 0.0f, 0.0f);
     payload.missed = false;
-    payload.pixelIndex = pixelIndex;
-    payload.dims = dims;
-    payload.bounceNum = 0;
     payload.internal = false;
     
-    float3 throughput = float3(1.0f, 1.0f, 1.0f);
     float3 finalColor = float3(0.0f, 0.0f, 0.0f);
     
     for (uint i = 0; i <= maxBounces; i++)
@@ -141,33 +134,27 @@ void RayGeneration()
         // terminate ray if at end of path
         if (payload.missed || payload.emission.x > 0.0f || payload.emission.y > 0.0f || payload.emission.z > 0.0f)
         {
-            finalColor += payload.bounce_weight * payload.emission;
             break;
         }
         
         // Russian roullete
         if (i > minBounces)
         {
-            float maxComponent = max(throughput.x, max(throughput.y, throughput.z));
+            float maxComponent = max(payload.throughput.x, max(payload.throughput.y, payload.throughput.z));
             float rand = randomPCG(payload.state);
-            if (rand > maxComponent)
+            float p = clamp(maxComponent, 0.05, 0.95);
+            if (rand > p)
             {
-                finalColor += throughput * payload.bounce_weight * payload.emission;
                 break;
             }
-            throughput *= 1.0f / maxComponent;
+            payload.throughput *= 1.0f / p;
 
 
         }
-        else
-        {
-            throughput *= payload.bounce_weight;
-        }
-        
-        
     }
     
-    randPattern[payload.pixelIndex.x + payload.pixelIndex.y * payload.dims.x] = state; // write back updated state
+    finalColor += payload.emission;
+    randPattern[pixelIndex.x + pixelIndex.y * dims.x] = state; // write back updated state
     accumulationTexture[pixelIndex] += float4(finalColor, 1.0f);
 }
 
@@ -198,23 +185,6 @@ float3 localToWorld(float3 local, float3x3 onb)
 float3 worldToLocal(float3 world, float3x3 onb)
 {
     return float3(dot(world, onb[0]), dot(world, onb[1]), dot(world, onb[2]));
-}
-
-// GGX Normal Distribution Function
-float D_GGX(float omega_m_dot_n, float alpha)
-{
-    float a2 = alpha * alpha;
-    float d = (omega_m_dot_n * omega_m_dot_n * (a2 - 1.0f) + 1.0f);
-    return a2 / (PI * d * d);
-}
-
-// monodirectional shadowing
-float G1_Smith(float omega_dot_n, float alpha)
-{
-    float a2 = alpha * alpha;
-    float cos2 = omega_dot_n * omega_dot_n;
-    float tan2 = (1.0f - cos2) / cos2;
-    return 2.0f / (1.0f + sqrt(1.0f + a2 * tan2));
 }
 
 // Fresnel schlick
@@ -297,51 +267,22 @@ float3 SampleBRDF_GGX(float3 omega_i, float alpha, float3 xi)
     return omega_o;
 }
 
-float PdfGGX_VNDF(float3 omega_i, float3 omega_o, float alpha)
+float GGX_DirectionalAlbedo(float NoV, float roughness)
 {
+    float x = -7.353f * NoV - 3.564f;
+    float a = exp2(x * NoV);
+    float b = -0.7606f * roughness + 0.7606f;
+    float c = -0.2974f * roughness + 0.9995f;
     
-    float NoI = omega_i.z;
-    float NoO = omega_o.z;
-    
-    if (NoI <= 0.0f || NoO <= 0.0f)
-    {
-        return 0.0f;
-    }
-    
-    float3 omega_m = normalize(omega_i + omega_o);
-    
-    float NoM = omega_m.z;
-    float IoM = abs(dot(omega_i, omega_m));
-    float OoM = abs(dot(omega_o, omega_m));
-    
-    if (NoM <= 0.0f || IoM <= 0.0f || OoM <= 0.0f)
-    {
-        return 0.0f;
-    }
-    
-    
-    float D = D_GGX(NoM, alpha);
-    float G1 = G1_Smith(NoI, alpha);
-    
-    float numer = D * G1 * IoM / abs(NoI);
-    float denom = 4.0f * OoM;
-    
-    return numer / denom;
+    return saturate(a * b + c);
 }
 
-float3 EvalBRDF_GGX(float3 omega_i, float3 omega_o, float alpha, float3 f0, float3 N)
+float SmithCorrelated_VNDF_Weight(float NoV, float NoL, float alpha)
 {
-    if (dot(omega_i, N) <= 0.0f || dot(omega_o, N) <= 0.0f)
-    {
-        return float3(0.0f, 0.0f, 0.0f);
-    }
-    
-    float3 omega_m = normalize(omega_i + omega_o);
-    float d = D_GGX(dot(omega_m, N), alpha);
-    float g = G1_Smith(dot(omega_i, N), alpha) * G1_Smith(dot(omega_o, N), alpha);
-    float3 f = fresnelSchlickMetallic(dot(omega_i, omega_m), f0);
-    float denom = 4.0f * abs(dot(omega_i, N)) * abs(dot(omega_o, N));
-    return (d * g * f) / denom;
+    float a2 = alpha * alpha;
+    float LambdaV = sqrt(NoV * NoV * (1.0f - a2) + a2);
+    float LambdaL = sqrt(NoL * NoL * (1.0f - a2) + a2);
+    return (NoL * (NoV + LambdaV)) / (NoV * LambdaL + NoL * LambdaV);
 }
 
 float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
@@ -351,7 +292,7 @@ float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worl
     
     float roughness = mat.roughness;
     float alpha = roughness * roughness;
-    alpha = max(alpha, 0.00001f);
+    alpha = max(alpha, 0.0001f);
     float3 f0 = lerp(float3(0.04f, 0.04f, 0.04f), mat.color, mat.metallic);
     
     // local frame
@@ -389,29 +330,27 @@ float3 specularThroughput(inout Payload payload, SampledMaterial mat, float3 wor
     float3 viewDirLocal = worldToLocal(wo, onb);
     float3 lightDirLocal = worldToLocal(wi, onb);
     
-    // compute pdf
-    float pdf = PdfGGX_VNDF(viewDirLocal, lightDirLocal, alpha);
-    if (pdf <= 0.0001f)
+    float NoV = viewDirLocal.z;
+    float NoL = lightDirLocal.z;
+    
+    if (NoV <= 0.0f || NoL <= 0.0f)
     {
         return float3(0.0f, 0.0f, 0.0f);
     }
     
-    // elvaluate brdf
-    float3 brdf = EvalBRDF_GGX(viewDirLocal, lightDirLocal, alpha, f0, float3(0.0f, 0.0f, 1.0f));
+    // elvaluate brdf    
+    float G_weight = SmithCorrelated_VNDF_Weight(NoV, NoL, alpha);
     
-    // cosine term
-    float cosTheta = abs(lightDirLocal.z);
+    float3 H = normalize(viewDirLocal + lightDirLocal);
+    float VoH = saturate(dot(viewDirLocal, H));
+    float3 F = fresnelSchlickMetallic(VoH, f0);
     
-    // throughput
-    float3 throughput = brdf * cosTheta / pdf;
+    // Multi-scatter energy compensation
+    float Ess = GGX_DirectionalAlbedo(NoV, roughness);
+    float3 F_avg = f0 + (float3(1.0f, 1.0f, 1.0f) - f0) / 21.0f;
+    float3 ms_factor = float3(1.0f, 1.0f, 1.0f) + ((1.0f - Ess) / max(Ess, 0.001f)) * F_avg;
     
-    //return throughput;
-    
-    // new alternative?
-    float G1_L = G1_Smith(abs(lightDirLocal.z), alpha);
-    float3 F = fresnelSchlickMetallic(dot(viewDirLocal, normalize(viewDirLocal + lightDirLocal)), f0);
-    
-    return F * G1_L;
+    return F * G_weight * ms_factor;
 }
 
 float3 diffuseDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
@@ -500,12 +439,11 @@ void Shade(inout Payload payload, float2 uv)
 
     // Interpolate normal from three vertices
     float uv0 = 1.0f - uv.x - uv.y;
-    float3 normal = normalize(v0.normal * uv0 + v1.normal * uv.x + v2.normal * uv.y);
-    float3 worldNormal = normalize(mul(normal, (float3x3) ObjectToWorld4x3()));
+    float3 normal = normalize(v0.normal * uv0 + v1.normal * uv.x + v2.normal * uv.y);    
+    float3 worldNormal = normalize(mul((float3x3) WorldToObject4x3(), normal));
     
     worldNormal = dot(WorldRayDirection(), worldNormal) < 0 ? worldNormal : worldNormal * -1.0f;
     
-    //worldNormal = payload.internal == true ? worldNormal * -1.0f : worldNormal;
     
     // Fetch material
     uint matID = materialIndexBuffer[instanceIndex];
@@ -529,17 +467,17 @@ void Shade(inout Payload payload, float2 uv)
     float3 rayPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     
     payload.pos = rayPos;
-    payload.emission = sampled_material.color * sampled_material.emission;
+    payload.emission = sampled_material.color * sampled_material.emission * payload.throughput;
     
     float cosTheta_i = abs(dot(WorldRayDirection(), worldNormal));
     
     // Sample lobe
     float randomSample = randomPCG(payload.state);
-    float randomSample2 = randomPCG(payload.state);
-    float p_specular = lerp(0.04f, 1.0f, sampled_material.metallic);
+    float F = fresnelSchlickIOR(payload, cosTheta_i, sampled_material.ior);
+    float p_specular = lerp(F, 1.0f, sampled_material.metallic);
     float p_transmission = sampled_material.transmission * (1.0f - p_specular);
     float p_diffuse = 1.0f - (p_specular + p_transmission);
-    float F = fresnelSchlickIOR(payload, cosTheta_i, sampled_material.ior);
+ 
     
     // Lobe selection
     bool TIR = false;
@@ -548,29 +486,19 @@ void Shade(inout Payload payload, float2 uv)
     if (randomSample <= p_specular)
     {
         payload.dir = specularDirection(payload, sampled_material, worldNormal, uv);
-        payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv) / p_specular;
+        payload.throughput *= specularThroughput(payload, sampled_material, worldNormal, uv) / p_specular;
     }
     // Transmission lobe
     else if (randomSample <= p_specular + p_transmission)
     {
-        // Specular (Glass)
-        if (randomSample2 < F)
-        {
-            payload.dir = specularDirection(payload, sampled_material, worldNormal, uv);
-            payload.bounce_weight *= specularThroughput(payload, sampled_material, worldNormal, uv) / (p_transmission * F);
-        }
-        // Refraction
-        else
-        {
-            payload.dir = refractionDirection(payload, sampled_material, worldNormal, uv, TIR);
-            payload.bounce_weight *= refractionThroughput(payload, sampled_material, worldNormal, uv, TIR) / (p_transmission * (1.0f - F));
-        }
+      payload.dir = refractionDirection(payload, sampled_material, worldNormal, uv, TIR);
+      payload.throughput *= refractionThroughput(payload, sampled_material, worldNormal, uv, TIR) / p_transmission;
     }
     // Diffuse lobe
     else if (randomSample <= p_specular + p_transmission + p_diffuse)
     {
         payload.dir = diffuseDirection(payload, sampled_material, worldNormal, uv);
-        payload.bounce_weight *= diffuseThroughput(payload, sampled_material, worldNormal, uv) / (p_specular + p_transmission + p_diffuse);
+        payload.throughput *= diffuseThroughput(payload, sampled_material, worldNormal, uv) / p_diffuse;
     }
     
     
@@ -582,7 +510,6 @@ void ClosestHit(inout Payload payload, BuiltInTriangleIntersectionAttributes att
 {
     
     float2 uv = attribs.barycentrics;
-    payload.bounceNum++;
     Shade(payload, uv);
     
     return;
@@ -594,14 +521,14 @@ void Miss(inout Payload payload)
     payload.missed = true;
     if (!sky)
     {
-        payload.bounce_weight *= float3(0.0f, 0.0f, 0.0f);
+        payload.throughput *= float3(0.0f, 0.0f, 0.0f);
         return;
     }
     
      
     float slope = normalize(WorldRayDirection()).y;
     float t = saturate(slope * 2 + 0.5);
-    payload.bounce_weight *= lerp(skyBottom, skyTop, t);
+    payload.throughput *= lerp(skyBottom, skyTop, t);
     payload.emission = float3(skyBrightness, skyBrightness, skyBrightness);
     return;
 }
