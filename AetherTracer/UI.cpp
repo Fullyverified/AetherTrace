@@ -268,6 +268,7 @@ void UI::sceneEditor() {
                     updateUIentity();
                     accumulationUpdate = true;
                     accelUpdate = true;
+                    materialUpdate = true;
 
                     if (ImGui::IsItemDeactivated() || !ImGui::IsItemActive() || !ImGui::IsItemFocused() || !ImGui::IsAnyItemFocused()) {
                         deleting_index_entity = -1;  // exit deleting mode

@@ -71,8 +71,8 @@ cbuffer Camerab : register(b0)
 
 
 // constants
-static const float3 skyTop = float3(0.24, 0.44, 0.9);
-static const float3 skyBottom = float3(0.75, 0.86, 1.0);
+static const float3 skyTop = float3(0.24f, 0.44f, 1.0f);
+static const float3 skyBottom = float3(0.75f, 0.86f, 1.0f);
 static const float PI = 3.141592653589793; // why not
 
 float randomPCG(inout uint64_t state)
@@ -153,8 +153,8 @@ void RayGeneration()
         }
     }
     
-    finalColor += payload.emission;
-    randPattern[pixelIndex.x + pixelIndex.y * dims.x] = state; // write back updated state
+    finalColor += payload.emission * payload.throughput;
+    randPattern[pixelIndex.x + pixelIndex.y * dims.x] = payload.state; // write back updated state
     accumulationTexture[pixelIndex] += float4(finalColor, 1.0f);
 }
 
@@ -190,14 +190,31 @@ float3 worldToLocal(float3 world, float3x3 onb)
 // Fresnel schlick
 float3 fresnelSchlickMetallic(float cos_theta, float3 f0)
 {
-    return f0 + (float3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - cos_theta, 5.0f);
+    return saturate(f0 + (float3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - cos_theta, 5.0f));
 }
 
-float fresnelSchlickIOR(inout Payload payload, float cos_theta, float ior)
+float fresnelSchlickIOR(float cos_theta, float ior)
 {
-    float r0 = payload.internal ? (1.0003f - ior) / (1.0003f + ior) : (ior - 1.0003f) / (ior + 1.0003f);
+    float r0 = (1.0003f - ior) / (1.0003f + ior);
     r0 = r0 * r0;
-    return r0 + (1.0f - r0) * pow(1.0f - cos_theta, 5.0f);
+    return saturate(r0 + (1.0f - r0) * pow(1.0f - cos_theta, 5.0f));
+}
+
+// GGX Normal Distribution Function
+float D_GGX(float omega_m_dot_n, float alpha)
+{
+    float a2 = alpha * alpha;
+    float d = (omega_m_dot_n * omega_m_dot_n * (a2 - 1.0f) + 1.0f);
+    return a2 / (PI * d * d);
+}
+
+// monodirectional shadowing
+float G1_Smith(float omega_dot_n, float alpha)
+{
+    float a2 = alpha * alpha;
+    float cos2 = omega_dot_n * omega_dot_n;
+    float tan2 = (1.0f - cos2) / cos2;
+    return 2.0f / (1.0f + sqrt(1.0f + a2 * tan2));
 }
 
 // Visible normal distribution function (VNDF)
@@ -253,36 +270,51 @@ float3 SampleGGX_VNDF(float3 omega_i, float alpha, float3 xi)
 
 }
 
-float3 SampleBRDF_GGX(float3 omega_i, float alpha, float3 xi)
+float PdfGGX_VNDF(float3 omega_i, float3 omega_o, float alpha)
 {
-    float3 omega_m = SampleGGX_VNDF(omega_i, alpha, xi);
-    // invalid sample, resample
     
-    if (dot(omega_i, omega_m) <= 0.0f)
+    float NoI = omega_i.z;
+    float NoO = omega_o.z;
+    
+    if (NoI <= 0.0f || NoO <= 0.0f)
     {
-        return float3(0.0f, 0.0f, 1.0f);
+        return 0.0f;
     }
     
-    float3 omega_o = reflect(-omega_i, omega_m);
-    return omega_o;
-}
-
-float GGX_DirectionalAlbedo(float NoV, float roughness)
-{
-    float x = -7.353f * NoV - 3.564f;
-    float a = exp2(x * NoV);
-    float b = -0.7606f * roughness + 0.7606f;
-    float c = -0.2974f * roughness + 0.9995f;
+    float3 omega_m = normalize(omega_i + omega_o);
     
-    return saturate(a * b + c);
+    float NoM = omega_m.z;
+    float IoM = abs(dot(omega_i, omega_m));
+    float OoM = abs(dot(omega_o, omega_m));
+    
+    if (NoM <= 0.0f || IoM <= 0.0f || OoM <= 0.0f)
+    {
+        return 0.0f;
+    }
+    
+    
+    float D = D_GGX(NoM, alpha);
+    float G1 = G1_Smith(NoI, alpha);
+    
+    float numer = D * G1 * IoM / abs(NoI);
+    float denom = 4.0f * OoM;
+    
+    return numer / denom;
 }
 
-float SmithCorrelated_VNDF_Weight(float NoV, float NoL, float alpha)
+float3 EvalBRDF_GGX(float3 omega_i, float3 omega_o, float alpha, float3 f0, float3 N)
 {
-    float a2 = alpha * alpha;
-    float LambdaV = sqrt(NoV * NoV * (1.0f - a2) + a2);
-    float LambdaL = sqrt(NoL * NoL * (1.0f - a2) + a2);
-    return (NoL * (NoV + LambdaV)) / (NoV * LambdaL + NoL * LambdaV);
+    if (dot(omega_i, N) <= 0.0f || dot(omega_o, N) <= 0.0f)
+    {
+        return float3(0.0f, 0.0f, 0.0f);
+    }
+    
+    float3 omega_m = normalize(omega_i + omega_o);
+    float d = D_GGX(dot(omega_m, N), alpha);
+    float g = G1_Smith(dot(omega_i, N), alpha) * G1_Smith(dot(omega_o, N), alpha);
+    float3 f = fresnelSchlickMetallic(dot(omega_i, omega_m), f0);
+    float denom = 4.0f * abs(dot(omega_i, N)) * abs(dot(omega_o, N));
+    return (d * g * f) / denom;
 }
 
 float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
@@ -292,7 +324,7 @@ float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worl
     
     float roughness = mat.roughness;
     float alpha = roughness * roughness;
-    alpha = max(alpha, 0.0001f);
+    alpha = max(alpha, 0.001f);
     float3 f0 = lerp(float3(0.04f, 0.04f, 0.04f), mat.color, mat.metallic);
     
     // local frame
@@ -300,11 +332,17 @@ float3 specularDirection(inout Payload payload, SampledMaterial mat, float3 worl
    
     // transform view dir to local space
     float3 viewDirLocal = worldToLocal(wi, onb);
+   
+    float3 omega_m = -viewDirLocal;
+    while (dot(viewDirLocal, omega_m) <= 0.0f)
+    {
+        float2 xi = float2(randomPCG(payload.state), randomPCG(payload.state));
+
+        // sample local outgoing direction
+        omega_m = SampleGGX_VNDF(viewDirLocal, alpha, float3(xi.x, xi.y, 0.0f));
+    }
     
-    float2 xi = float2(randomPCG(payload.state), randomPCG(payload.state));
-    
-    // sample local outgoing direction
-    float3 lightDirLocal = SampleBRDF_GGX(viewDirLocal, alpha, float3(xi.x, xi.y, 0.0f));
+    float3 lightDirLocal = reflect(-viewDirLocal, omega_m);
     
     // transform to world space
     float3 wo = localToWorld(lightDirLocal, onb);
@@ -330,27 +368,23 @@ float3 specularThroughput(inout Payload payload, SampledMaterial mat, float3 wor
     float3 viewDirLocal = worldToLocal(wo, onb);
     float3 lightDirLocal = worldToLocal(wi, onb);
     
-    float NoV = viewDirLocal.z;
-    float NoL = lightDirLocal.z;
-    
-    if (NoV <= 0.0f || NoL <= 0.0f)
+    // compute pdf
+    float pdf = PdfGGX_VNDF(viewDirLocal, lightDirLocal, alpha);
+    if (pdf <= 0.0001f)
     {
         return float3(0.0f, 0.0f, 0.0f);
     }
     
-    // elvaluate brdf    
-    float G_weight = SmithCorrelated_VNDF_Weight(NoV, NoL, alpha);
+    // elvaluate brdf
+    float3 brdf = EvalBRDF_GGX(viewDirLocal, lightDirLocal, alpha, f0, float3(0.0f, 0.0f, 1.0f));
     
-    float3 H = normalize(viewDirLocal + lightDirLocal);
-    float VoH = saturate(dot(viewDirLocal, H));
-    float3 F = fresnelSchlickMetallic(VoH, f0);
+    // cosine term
+    float cosTheta = abs(lightDirLocal.z);
     
-    // Multi-scatter energy compensation
-    float Ess = GGX_DirectionalAlbedo(NoV, roughness);
-    float3 F_avg = f0 + (float3(1.0f, 1.0f, 1.0f) - f0) / 21.0f;
-    float3 ms_factor = float3(1.0f, 1.0f, 1.0f) + ((1.0f - Ess) / max(Ess, 0.001f)) * F_avg;
+    // throughput
+    float3 throughput = brdf * cosTheta / pdf;
     
-    return F * G_weight * ms_factor;
+    return throughput;
 }
 
 float3 diffuseDirection(inout Payload payload, SampledMaterial mat, float3 worldNormal, float2 uv)
@@ -375,7 +409,6 @@ float3 refractionDirection(inout Payload payload, SampledMaterial mat, float3 wo
 
     float n1 = payload.internal ? mat.ior : 1.0003f;
     float n2 = payload.internal ? 1.0003f : mat.ior;
-    //worldNormal = payload.internal ? worldNormal * -1.0f : worldNormal; // already flipped
     
     float cosTheta_I = -dot(worldNormal, wi);
     
@@ -405,17 +438,25 @@ float3 refractionThroughput(inout Payload payload, SampledMaterial mat, float3 w
     if (TIR)
     {
         return float3(1.0f, 1.0f, 1.0f);
+        //return specularThroughput(payload, mat, worldNormal, uv);
     }
     
     float3 wi = normalize(WorldRayDirection());
     
-    float n1 = payload.internal ? mat.ior : 1.0003f;
-    float n2 = payload.internal ? 1.0003f : mat.ior;
+    // payload.internal is flipped BEFORE the throughput is calculated
+    float n1 = 1.0003f;
+    float n2 = mat.ior;
+    if (!payload.internal)
+    {
+        n1 = mat.ior;
+        n2 = 1.0003f;
+    }
+    
     worldNormal = payload.internal ? worldNormal * -1.0f : worldNormal;
     
     float cosTheta_wi = abs(dot(wi, worldNormal));
         
-    float F = fresnelSchlickIOR(payload, cosTheta_wi, mat.ior);
+    float F = fresnelSchlickIOR(cosTheta_wi, mat.ior);
     
     float3 throughput = (1.0f - F) * mat.color * (n2 / n1) * (n2 / n1);
     return throughput;
@@ -440,11 +481,10 @@ void Shade(inout Payload payload, float2 uv)
     // Interpolate normal from three vertices
     float uv0 = 1.0f - uv.x - uv.y;
     float3 normal = normalize(v0.normal * uv0 + v1.normal * uv.x + v2.normal * uv.y);    
-    float3 worldNormal = normalize(mul((float3x3) WorldToObject4x3(), normal));
+    float3 worldNormal = normalize(mul(normal, (float3x3) ObjectToWorld4x3()));
     
     worldNormal = dot(WorldRayDirection(), worldNormal) < 0 ? worldNormal : worldNormal * -1.0f;
-    
-    
+
     // Fetch material
     uint matID = materialIndexBuffer[instanceIndex];
     Material material = Materials[matID];
@@ -467,13 +507,13 @@ void Shade(inout Payload payload, float2 uv)
     float3 rayPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     
     payload.pos = rayPos;
-    payload.emission = sampled_material.color * sampled_material.emission * payload.throughput;
+    payload.emission = sampled_material.color * sampled_material.emission;
     
     float cosTheta_i = abs(dot(WorldRayDirection(), worldNormal));
     
     // Sample lobe
     float randomSample = randomPCG(payload.state);
-    float F = fresnelSchlickIOR(payload, cosTheta_i, sampled_material.ior);
+    float F = fresnelSchlickIOR(cosTheta_i, sampled_material.ior);
     float p_specular = lerp(F, 1.0f, sampled_material.metallic);
     float p_transmission = sampled_material.transmission * (1.0f - p_specular);
     float p_diffuse = 1.0f - (p_specular + p_transmission);
@@ -528,7 +568,7 @@ void Miss(inout Payload payload)
      
     float slope = normalize(WorldRayDirection()).y;
     float t = saturate(slope * 2 + 0.5);
-    payload.throughput *= lerp(skyBottom, skyTop, t);
-    payload.emission = float3(skyBrightness, skyBrightness, skyBrightness);
+    float3 skyColor = lerp(skyBottom, skyTop, t);
+    payload.emission = float3(skyBrightness, skyBrightness, skyBrightness) * skyColor;
     return;
 }
